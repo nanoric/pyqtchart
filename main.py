@@ -3,21 +3,33 @@ from abc import ABC, abstractmethod
 from copy import copy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TypeVar
 
-from PyQt5.QtCore import QRectF, QTimer, Qt
-from PyQt5.QtGui import QBrush, QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform
+from PyQt5.QtCore import QRectF, QTimer, Qt, QPointF
+from PyQt5.QtGui import QBrush, QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform, QFont
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
+T = TypeVar("T")
 
-class AbstractAxis:
 
-    def __init__(self):
+def _generate_sequence(start, end, step):
+    """输出[start, end)中的序列"""
+    i = start
+    while i < end:
+        yield i
+        i += step
+
+
+class Axis:
+    @abstractmethod
+    def draw(self, config: "DrawConfig", painter: QPainter):
         pass
 
 
-def virtual(func):
-    return func
+class StringAxis(Axis):
+    @abstractmethod
+    def draw(self, config: "DrawConfig", painter: QPainter):
+        pass
 
 
 class DataDrawer(ABC):
@@ -54,7 +66,7 @@ class DataDrawer(ABC):
         return config
 
     @abstractmethod
-    def draw_all(self, config: "DrawConfig", painter: QPainter):
+    def draw(self, config: "DrawConfig", painter: QPainter):
         """
         绘制数据，可以在整张图上任意绘制，但是该函数最好每次只绘制坐标属于x的图
         坐标系(以下称为drawer坐标系)使用和数据x-y值一致的坐标系:原点在左下角，x轴向右,y轴向上 => 坐下到右上
@@ -99,6 +111,9 @@ class Brush:
     GREEN = QBrush(QColor("green"))
     DARK = QBrush(QColor("dark"))
     GRAY = QBrush(QColor("gray"))
+    BLACK = QBrush(QColor("black"))
+    LIGHTGRAY = QBrush(QColor("lightgray"))
+    WHITE = QBrush(QColor("white"))
 
 
 class CandleDrawer(DataDrawer):
@@ -109,7 +124,7 @@ class CandleDrawer(DataDrawer):
 
     def __init__(self):
         super().__init__()
-        self.body_width = 0.75
+        self.body_width = 0.95
         self.line_width = 0.15
         self.minimum_box_height = 0.01
 
@@ -118,12 +133,13 @@ class CandleDrawer(DataDrawer):
 
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
         showing_data = self._data_source[config.begin:config.end]
-        low = min(showing_data, key=lambda c: c.low).low
-        high = max(showing_data, key=lambda c: c.high).high
-        config.y_low, config.y_high = low, high
+        if showing_data:
+            low = min(showing_data, key=lambda c: c.low).low
+            high = max(showing_data, key=lambda c: c.high).high
+            config.y_low, config.y_high = low, high
         return config
 
-    def draw_all(self, config: "DrawConfig", painter: QPainter):
+    def draw(self, config: "DrawConfig", painter: QPainter):
         for i in range(config.begin, config.end):
             data: "CandleData" = self._data_source[i]
 
@@ -153,7 +169,7 @@ class DrawConfig:
         self.begin: int = 0  # 第一个绘制的元素
         self.end: int = 0  # 最后一个绘制的元素+1：也就是说绘制元素的范围为[begin, end)
         self.y_low: float = 0  # 图表顶端所代表的y值
-        self.y_high: float = 0  # 图表底端所代表的y值
+        self.y_high: float = 1  # 图表底端所代表的y值
 
 
 class ExtraDrawConfig(DrawConfig):
@@ -161,11 +177,22 @@ class ExtraDrawConfig(DrawConfig):
     def __init__(self):
         super().__init__()
         self.y_scale = 1.1
-        val = 100
-        self.paddings = (val, val, val, val)
+        padding = 100
+        self.paddings = (padding, padding, padding, padding)
 
-        self.axis_width = 1
-        self.axis_color = QColor("black")
+        self.box_edge_color = QColor("black")
+        self.box_edge_width = 1
+
+        self.axis_label_font = None
+        self.axis_label_color = QColor("black")
+
+        self.y_tick_count = 30
+        self.y_grid_color = QColor("lightgray")  # 如果设置为None则不绘制网格
+
+        # intermediate variables to speed up calculation
+        self.drawer_transform: Optional["QTransform"] = None  # 坐标转化矩阵(UI->drawer)
+        self.drawer_area: Optional['QRectF'] = None  # drawer坐标的世界大小
+        self.plot_area: Optional['QRectF'] = None  # UI坐标中属于绘制区域的部分
 
 
 def scale_from_mid(low, high, ratio):
@@ -199,70 +226,144 @@ class BarChartWidget(QWidget):
         # copy config: ensure config is not change while painting
         config = copy(self._draw_config)
 
+        self._prepare_painting(config)
+
+        primary_painter = QPainter(self)
+
+        # clear background (for QOpenGLWidget)
+        # primary_painter.drawRect(self.rect())
+
+        axis_pic = self._paint_axis_layer(config)
+        axis_pic.play(primary_painter)
+
+        # 绘制所有注册了的序列
+        for i, s in enumerate(self._drawers):
+            pic = self._layers[i]
+            self._paint_drawer_layer(s, pic, config)
+            pic.play(primary_painter)
+
+        primary_painter.end()
+        event.accept()
+
+    def _prepare_painting(self, config):
+        """
+        提前计算一些在绘图时需要的数据
+        """
         # get preferred y range
         preferred_configs = [s.prepare_draw(copy(config)) for s in self._drawers]
         y_low = min(preferred_configs, key=lambda c: c.y_low).y_low
         y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
 
         # scale y range
-        y_low, y_high = config.y_low, config.y_high = scale_from_mid(y_low, y_high, config.y_scale)
-        y_range = y_high - y_low
-        x_range = config.end - config.begin
+        config.y_low, config.y_high = scale_from_mid(y_low, y_high, config.y_scale)
 
-        primary_painter = QPainter(self)
+        # 坐标转化矩阵
+        self._prepare_drawer_transform(config)
 
-        axis_pic = self.paint_axis_layer(config)
-        axis_pic.play(primary_painter)
+    def _prepare_drawer_transform(self, config: "ExtraDrawConfig"):
+        """
+        生成一个矩阵用以将painter的坐标系从UI坐标系调整为drawer坐标系
+        这样painter中的x和y轴就正好对应数据的x和y了
 
-        # 绘制所有注册了的序列
-        for i, s in enumerate(self._drawers):
-            pic = self._layers[i]
-            self.paint_drawer_layer(s, pic, config)
-            pic.play(primary_painter)
-
-        primary_painter.end()
-        event.accept()
+        """
+        # 从UI坐标系到drawer坐标系的转化矩阵的构造顺序恰好相反，假设目前为drawer坐标系
+        # 将drawer坐标转化为UI坐标
+        drawer_area = QRectF(config.begin,
+                             config.y_low,
+                             max(config.end - config.begin, 1),
+                             max(config.y_high - config.y_low, 1),
+                             )
+        plot_area = self.plot_area(config)
+        # 应用这个坐标转化
+        transform = self._coordinate_transform(drawer_area, plot_area)
+        # 在UI坐标系中上下翻转图像
+        transform *= QTransform.fromTranslate(0, self.size().height()).rotate(180, Qt.XAxis)
+        config.drawer_transform = transform
+        config.drawer_area = drawer_area
+        config.plot_area = plot_area
 
     def plot_area(self, config: "ExtraDrawConfig") -> QRectF:
+        """
+        在UI坐标系中计算出绘制区域
+        内部绘制函数无需调用该函数，查看config.output这个缓存的值即可
+        """
         output: QRectF = QRectF(self.rect())
         paddings = config.paddings
         output = output.adjusted(paddings[0], paddings[1], -paddings[2], -paddings[3])
         return output
 
-    def paint_drawer_layer(self, drawer: "DataDrawer", pic: QPicture, config: "ExtraDrawConfig"):
+    def _paint_drawer_layer(self, drawer: "DataDrawer", pic: QPicture, config: "ExtraDrawConfig"):
         painter = QPainter(pic)
         painter.setPen(Pen.NO)
 
-        # 将drawer坐标转化为UI坐标
-        drawer_area = QRectF(config.begin, config.y_low, config.end - config.begin,
-                             config.y_high - config.y_low)
-        ui_area = self.plot_area(config)
-        transform = self._viewport_transform(drawer_area, ui_area)
+        self._switch_painter_to_drawer_coordinate(painter, config)
 
-        # 在UI坐标系中上下翻转图像
-        transform *= QTransform.fromTranslate(0, self.size().height()).rotate(180, Qt.XAxis)
-
-        painter.setWorldTransform(transform)
-        painter.setWorldMatrixEnabled(True)
-
-        drawer.draw_all(copy(config), painter)
+        drawer.draw(copy(config), painter)
 
         painter.end()
 
-    def _viewport_transform(self, input: QRectF, output: QRectF):
+    def _switch_painter_to_drawer_coordinate(self, painter: "QPainter", config: "ExtraDrawConfig"):
+        """
+        将painter的坐标系从UI坐标系调整为drawer坐标系
+        这样painter中的x和y轴就正好对应数据的x和y了
+
+        如果要切换回来，调用painter.setWorldMatrixEnabled(False)即可
+        """
+        painter.setWorldTransform(config.drawer_transform)
+        painter.setWorldMatrixEnabled(True)
+
+    def _coordinate_transform(self, input: QRectF, output: QRectF):
         rx, ry = output.width() / input.width(), output.height() / input.height()
         t = QTransform.fromTranslate(-input.left(), -input.top())
         t *= QTransform.fromScale(rx, ry)
         t *= QTransform.fromTranslate(output.left(), output.top())
         return t
 
-    def paint_axis_layer(self, config: "ExtraDrawConfig"):
+    def drawer_to_ui(self, value: T, config: "ExtraDrawConfig")->T:
+        """将value从drawer坐标系转到UI坐标系"""
+        return config.drawer_transform.map(value)
+
+    def _paint_axis_layer(self, config: "ExtraDrawConfig"):
+
         pic = self.axis_layer
         painter = QPainter(pic)
-        plot_area = self.plot_area(config)
+        plot_area = config.plot_area
         painter.setBrush(Brush.NO)
-        painter.setPen(QPen(QBrush(config.axis_color), config.axis_width))
-        painter.drawRect(plot_area)
+
+        low = config.y_low
+        high = config.y_high
+        count = config.y_tick_count
+        left = config.plot_area.left() - 1
+        right = config.plot_area.right()
+
+        # grid first
+        for y in _generate_sequence(low, high, (high - low) / count):
+            ui_pos = self.drawer_to_ui(QPointF(1, y), config)
+            ui_y: QRectF = ui_pos.y()
+            if config.y_grid_color is not None:
+                painter.setPen(QColor(config.y_grid_color))
+                lp = QPointF(left, ui_y)
+                rp = QPointF(right, ui_y)
+                painter.drawLine(lp, rp)
+
+        # then box edge
+        if config.box_edge_color is not None:
+            painter.setPen(QPen(QBrush(config.box_edge_color), config.box_edge_width))
+            painter.drawRect(plot_area)
+
+        # finally labels
+        for y in _generate_sequence(low, high, (high - low) / count):
+            ui_pos = self.drawer_to_ui(QPointF(1, y), config)
+            ui_y: QRectF = ui_pos.y()
+
+            text = f"{y:.2f}"
+            text_pos = QRectF(0, ui_y-10, left, 20)
+            if config.axis_label_color is not None:
+                painter.setPen(QPen(QColor(config.axis_label_color)))
+                if config.axis_label_font is not None:
+                    painter.setFont(config.axis_label_font)
+                painter.drawText(text_pos, Qt.AlignRight| Qt.AlignVCenter, text)
+
         painter.end()
         return pic
 
@@ -292,18 +393,21 @@ class MainWindow(QMainWindow):
         self.chart.add_drawer(drawer)
 
         self.t = QTimer()
-        self.t.timeout.connect(self.add_one_data)
+        self.t.timeout.connect(self.on_timer)
         self.t.start(10)
 
-        for i in range(100):
+        # for i in range(3600):
             # for i in range(300):
-            # for i in range(30):
+        for i in range(30):
             self.add_one_data()
 
     def init_ui(self):
         self.chart = BarChartWidget(self)
         self.setCentralWidget(self.chart)
         pass
+
+    def on_timer(self):
+        self.add_one_data()
 
     def add_one_data(self):
         self.chart.repaint()
