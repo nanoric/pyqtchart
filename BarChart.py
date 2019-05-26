@@ -135,44 +135,49 @@ class BarChartWidget(QWidget):
 
     def _paint_axis(self, config: "ExtraDrawConfig", painter: "QPainter"):
         for axis in self.axis_x, self.axis_y:
-            axis.prepare_draw(copy(config))
+            if axis:
+                axis.prepare_draw(copy(config))
         # painter = QPainter(layer)
 
         # first: grid
         if config.has_showing_data:
             painter.setBrush(QColor(0, 0, 0, 0))
             for axis in self.axis_x, self.axis_y:
-                if axis.grid_color is not None:
-                    painter.setPen(QColor(axis.grid_color))
-                axis.draw_grid(copy(config), painter)
+                if axis:
+                    if axis.grid_color is not None:
+                        painter.setPen(QColor(axis.grid_color))
+                    axis.draw_grid(copy(config), painter)
 
         # last: labels
         if config.has_showing_data:
             for axis in self.axis_x, self.axis_y:
-                if axis.label_color is not None:
-                    painter.setBrush(QColor(0, 0, 0, 0))
-                    painter.setPen(QColor(axis.label_color))
-                    painter.setFont(axis.label_font)
-                    painter.setBrush(QColor(0, 0, 0, 0))
-                    painter.setPen(QColor(axis.label_color))
-                    axis.draw_labels(copy(config), painter)
+                if axis:
+                    if axis.label_color is not None:
+                        painter.setBrush(QColor(0, 0, 0, 0))
+                        painter.setPen(QColor(axis.label_color))
+                        painter.setFont(axis.label_font)
+                        painter.setBrush(QColor(0, 0, 0, 0))
+                        painter.setPen(QColor(axis.label_color))
+                        axis.draw_labels(copy(config), painter)
 
     def _prepare_painting(self, config: "ExtraDrawConfig"):
         """
         提前计算一些在绘图时需要的数据
         """
         # get preferred y range
-        preferred_configs = [s.prepare_draw(copy(config)) for s in self._drawers]
-        y_low = min(preferred_configs, key=lambda c: c.y_low).y_low
-        y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
+        has_showing_data = config.end - config.begin
+        config.has_showing_data = has_showing_data
 
-        # scale y range
-        config.y_low, config.y_high = scale_from_mid(y_low, y_high, config.y_scale)
+        if has_showing_data and self._drawers:
+            preferred_configs = [s.prepare_draw(copy(config)) for s in self._drawers]
+            y_low = min(preferred_configs, key=lambda c: c.y_low).y_low
+            y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
+
+            # scale y range
+            config.y_low, config.y_high = scale_from_mid(y_low, y_high, config.y_scale)
 
         # 一些给其他类使用的中间变量，例如坐标转化矩阵
         self._prepare_drawing_cache(config)
-
-        config.has_showing_data = config.end - config.begin
 
     def _prepare_drawing_cache(self, config: "ExtraDrawConfig"):
         """

@@ -42,6 +42,11 @@ class CandleDrawer(DrawerBase):
         self.growing_color: "ColorType" = "red"
         self.falling_color: "ColorType" = "green"
 
+        # 当cache打开时，不允许向DataSource中间插入数据，只允许向DataSource末尾插入数据，否则绘制出来的图会出错
+        # 数据量越大，cache的效率提升越明显
+        # 如果让DataSource支持消息订阅，则可以在所有情况下使用cache，但是考虑到无论怎么用cache，效率应该和C++无脑绘制差不多，还是算了。
+        self.use_cache = True
+
         # cached variables for draw
         self._cache_raising = []
         self._cache_falling = []
@@ -60,7 +65,14 @@ class CandleDrawer(DrawerBase):
         falling_brush = QBrush(QColor(self.falling_color))
 
         begin, end = config.begin, config.end
-        cache_end = self._cache_end
+
+        # 如果不使用cache，简单的做法就是每次绘图之前清空一下cache
+        if not self.use_cache:
+            cache_end = 0
+            self._cache_raising = []
+            self._cache_falling = []
+        else:
+            cache_end = self._cache_end
 
         data_len = len(self._data_source)
         if data_len > cache_end:

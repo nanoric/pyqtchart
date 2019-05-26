@@ -1,14 +1,17 @@
 import csv
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, TypeVar
 
+import math
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPen, QPicture
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget
 
 from BarChart import BarChartWidget
-from Candle import CandleData, CandleDrawer, CandleAxisX
+from Candle import CandleAxisX, CandleData, CandleDrawer
 from DataSource import DataSource
+from Drawer import BarDrawer
 
 T = TypeVar("T")
 
@@ -21,11 +24,18 @@ class PlotWidget(QPicture):
     pass
 
 
+@dataclass()
+class MyData(CandleData):
+    volume: float = 0
+
+
 class FtpCounter(QLabel):
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._refresh_interval_ms = 1000
         self._tick = 0
+        self.setMaximumHeight(30)
 
         timer = QTimer()
         timer.timeout.connect(self.update_tick)
@@ -52,49 +62,74 @@ class FtpCounter(QLabel):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, datas: List["CandleData"], parent=None):
+    def __init__(self, datas: List["MyData"], parent=None):
         super().__init__(parent)
         self.datas = datas
         self.data_last_index = 0
 
-        data_source = DataSource()
-        self.data_source = data_source
+        self.main_data_source = DataSource()
+        self.sub_data_source = DataSource()
 
-        drawer = CandleDrawer()
-        self.data_source.add_drawer(drawer)
-        self.drawer = drawer
+        main_drawer = CandleDrawer()
+        self.main_data_source.add_drawer(main_drawer)
+
+        sub_drawer = BarDrawer()
+        self.sub_data_source.add_drawer(sub_drawer)
 
         self.init_ui()
-        self.chart.add_drawer(drawer)
-        self.chart.axis_x = CandleAxisX(self.data_source)
+        self.main_chart.add_drawer(main_drawer)
+        self.main_chart.axis_x = CandleAxisX(self.main_data_source)
+
+        self.sub_chart.add_drawer(sub_drawer)
+        self.sub_chart.axis_x = None
 
         self.t = QTimer()
         self.t.timeout.connect(self.on_timer)
 
-        # for i in range(3600):
+        for i in range(3600):
             # for i in range(300):
-        for i in range(30):
+            # for i in range(30):
             self.add_one_data()
 
         self.stress_fps_tick()
         # self.t.start(1000)
 
     def init_ui(self):
-        self.chart = BarChartWidget(self)
+        main_layout = QVBoxLayout()
+        main_chart = BarChartWidget()
+        sub_chart = BarChartWidget()
 
-        self.setCentralWidget(self.chart)
-        self.fps = FtpCounter(self)
+        status_layout = QHBoxLayout()
+        fps = FtpCounter()
+        n = QLabel()
+        n.setMaximumHeight(30)
+        status_layout.addWidget(fps)
+        status_layout.addWidget(n)
+
+        main_layout.addLayout(status_layout)
+        main_layout.addWidget(main_chart)
+        main_layout.addWidget(sub_chart)
+
+        self.main_chart = main_chart
+        self.sub_chart = sub_chart
+
+        widget = QWidget()
+        widget.setLayout(main_layout)
+        self.setCentralWidget(widget)
+
+        self.fps = fps
+        self.n = n
 
         self.hook_paint_event()
 
     def hook_paint_event(self):
-        org_paint_handler = self.chart.paintEvent
+        org_paint_handler = self.main_chart.paintEvent
 
         def paintEventWithFPSCounter(*args):
             org_paint_handler(*args)
             self.fps.tick()
 
-        self.chart.paintEvent = paintEventWithFPSCounter
+        self.main_chart.paintEvent = paintEventWithFPSCounter
 
     def on_timer(self):
         self.add_one_data()
@@ -104,18 +139,31 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self.stress_fps_tick)
 
     def add_one_data(self):
-        self.chart.repaint()
         if self.data_last_index == len(self.datas):
             self.data_last_index = 0
         data = self.datas[self.data_last_index]
-        self.data_source.append(data)
-        self.chart.set_x_range(0, self.data_last_index)
+
+        self.main_data_source.append(data)
+        self.main_chart.set_x_range(0, self.data_last_index)
+
+        self.sub_data_source.append(data.volume)
+        self.sub_chart.set_x_range(0, self.data_last_index)
+
+        self.main_chart.repaint()
+        self.sub_chart.repaint()
 
         self.data_last_index += 1
+        self.n.setText(
+            f"# of showing:{self.data_last_index} # of datas: {len(self.main_data_source)}")
 
 
 def parse_datetime(dt_str: str):
     return datetime.strptime(dt_str, "%Y-%m-%d")
+
+
+def gen_wave(i, p=0, T=360, a=1000):
+    return a * math.sin(
+        (i - p) / T * math.pi)
 
 
 def read_data():
@@ -133,12 +181,16 @@ def read_data():
             close = float(item["收盘价"])
             dt_str = item["时间"]
             datetime = parse_datetime(dt_str)
-            bar_data = CandleData(
+            bar_data = MyData(
                 open=open_price,
                 low=low,
                 high=high,
                 close=close,
                 datetime=datetime,
+                volume=
+                gen_wave(i, 31) +
+            gen_wave(i, 15, 70)+
+            gen_wave(i, 30, 80)
             )
             i += 1
             yield bar_data
