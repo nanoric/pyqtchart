@@ -83,4 +83,18 @@ class CandleAxisX(StringBarAxis):
 
     def __init__(self, data_source: "CandleDataSourceType"):
         super().__init__(Orientation.HORIZONTAL)
+        self.label_count = 5
         self.data_source: "CandleDataSourceType" = data_source
+
+    def prepare_draw(self, config: "DrawConfig"):
+        data_source = self.data_source
+        n = config.end - config.begin
+        step = int(n / self.label_count)
+        self.strings.clear()
+        for i in range(config.begin, config.end, step):
+            data = data_source[i]
+
+            key = (i, None)
+            label = data.datetime.strftime("%Y-%m-%d")
+            self.strings[key] = label
+        super().prepare_draw(config)

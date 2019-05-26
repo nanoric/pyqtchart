@@ -7,7 +7,7 @@ from PyQt5.QtGui import QColor, QPen, QPicture
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from BarChart import BarChartWidget
-from CandleDrawer import CandleData, CandleDrawer
+from CandleDrawer import CandleData, CandleDrawer, CandleAxisX
 from DataSource import DataSource
 
 T = TypeVar("T")
@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
 
         self.init_ui()
         self.chart.add_drawer(drawer)
+        self.chart.axis_x = CandleAxisX(self.data_source)
 
         # self.t = QTimer()
         # self.t.timeout.connect(self.on_timer)
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
         for i in range(30):
             self.add_one_data()
 
-        self.on_timer()
+        # self.on_timer()
 
     def init_ui(self):
         self.chart = BarChartWidget(self)
