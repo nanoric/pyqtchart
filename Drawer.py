@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QBrush, QColor, QPainter
@@ -15,8 +15,8 @@ class BarDrawer(DrawerBase):
     并且管理数据的绘制
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, data_source: Optional["DataSource"] = None):
+        super().__init__(data_source)
         self.body_width = 1
         self.positive_color: "ColorType" = "red"
         self.negative_color: "ColorType" = "green"

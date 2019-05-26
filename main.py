@@ -6,7 +6,8 @@ from typing import List, TypeVar
 import math
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPen, QPicture
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget, \
+    QSizePolicy
 
 from BarChart import BarChartWidget
 from Candle import CandleAxisX, CandleData, CandleDrawer
@@ -70,18 +71,12 @@ class MainWindow(QMainWindow):
         self.main_data_source = DataSource()
         self.sub_data_source = DataSource()
 
-        main_drawer = CandleDrawer()
-        self.main_data_source.add_drawer(main_drawer)
-
-        sub_drawer = BarDrawer()
-        self.sub_data_source.add_drawer(sub_drawer)
-
         self.init_ui()
-        self.main_chart.add_drawer(main_drawer)
-        self.main_chart.axis_x = CandleAxisX(self.main_data_source)
+        self.main_chart.add_drawer(CandleDrawer(self.main_data_source))
+        self.main_chart.axis_x = None
 
-        self.sub_chart.add_drawer(sub_drawer)
-        self.sub_chart.axis_x = None
+        self.sub_chart.add_drawer(BarDrawer(self.sub_data_source))
+        self.sub_chart.axis_x = CandleAxisX(self.main_data_source)
 
         self.t = QTimer()
         self.t.timeout.connect(self.on_timer)
@@ -96,8 +91,20 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         main_layout = QVBoxLayout()
+        main_layout.setSpacing(0)
         main_chart = BarChartWidget()
+        size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        size_policy.setVerticalStretch(4)
+        main_chart.setSizePolicy(size_policy)
+
+        size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        size_policy.setVerticalStretch(1)
         sub_chart = BarChartWidget()
+        sub_chart.setSizePolicy(size_policy)
+
+        main_chart.paddings[3] = 0
+        sub_chart.paddings[1] = 0
+
 
         status_layout = QHBoxLayout()
         fps = FtpCounter()

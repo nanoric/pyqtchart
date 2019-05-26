@@ -60,18 +60,6 @@ class StringAxis(AxisBase):
             right_point = QPointF(grid_right, ui_y)
             painter.drawLine(left_point, right_point)
 
-    def draw_labels_vertical(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-
-        label_right = drawing_cache.plot_area.left() - 1
-
-        for value, label in self.strings.items():
-            ui_y = drawing_cache.drawer_y_to_ui(value)
-
-            text_pos = QRectF(0, ui_y - 10, label_right - self.label_spacing_to_plot_area, 20)
-            painter.drawText(text_pos, Qt.AlignRight | Qt.AlignVCenter, label)
-        pass
-
     def draw_labels_horizontal(self, config: "DrawConfig", painter: QPainter):
         drawing_cache = config.drawing_cache
 
@@ -85,6 +73,18 @@ class StringAxis(AxisBase):
             text_pos = QRectF(ui_x - label_width / 2, label_top + self.label_spacing_to_plot_area,
                               label_width, label_height)
             painter.drawText(text_pos, Qt.AlignTop | Qt.AlignHCenter, label)
+
+    def draw_labels_vertical(self, config: "DrawConfig", painter: QPainter):
+        drawing_cache = config.drawing_cache
+
+        label_right = drawing_cache.plot_area.left() - 1
+
+        for value, label in self.strings.items():
+            ui_y = drawing_cache.drawer_y_to_ui(value)
+
+            text_pos = QRectF(0, ui_y - 10, label_right - self.label_spacing_to_plot_area, 20)
+            painter.drawText(text_pos, Qt.AlignRight | Qt.AlignVCenter, label)
+        pass
 
 
 class StringBarAxis(AxisBase):
@@ -171,11 +171,12 @@ class StringBarAxis(AxisBase):
 
         # draw the last label, and this label may don't has an end anchor
         begin, end = self._keys[-1]
-        if end is None:
-            end = begin + 100  # should be large enough
         text = self._values[-1]
         begin_ui_x = drawing_cache.drawer_x_to_ui(begin)
-        end_ui_x = drawing_cache.drawer_x_to_ui(end)
+        if end is None:
+            end_ui_x = drawing_cache.drawer_area.right() + 3000  # should be large enough
+        else:
+            end_ui_x = drawing_cache.drawer_x_to_ui(end)
 
         text_pos = QRectF(begin_ui_x + self.label_spacing_to_grid,
                           label_top + self.label_spacing_to_plot_area,
@@ -193,13 +194,23 @@ class ValueAxis(StringAxis):
         super().__init__(orientation)
         self.tick_count: int = 10
         self.format: str = "%.2f"
+        self.show_lowest = False
+        self.show_highest = False
 
     # @virtual
     def prepare_draw(self, config: "DrawConfig"):
+        font_height = QFontInfo(self.label_font).pixelSize() + 2
+        font_height_in_drawer = config.drawing_cache.ui_height_to_drawer(font_height)
         if self.orientation is Orientation.HORIZONTAL:
             begin, end = config.begin, config.end
         else:
             begin, end = config.y_low, config.y_high
+
+        if not self.show_lowest:
+            begin += font_height_in_drawer
+        if not self.show_highest:
+            end -= font_height_in_drawer
+
         step = (end - begin) / self.tick_count
         self.strings = {
             value: self.format % value

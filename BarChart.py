@@ -33,19 +33,6 @@ class ExtraDrawConfig(DrawConfig):
 
     def __init__(self):
         super().__init__()
-        self.y_scale = 1.1
-        padding = 80
-        self.paddings = (padding, padding, padding, padding)
-
-        self.box_edge_color = QColor("black")
-        self.box_edge_width = 1
-
-        self.axis_label_font = None
-        self.axis_label_color = QColor("black")
-
-        self.y_tick_count = 30
-        self.y_grid_color = QColor("lightgray")  # 如果设置为None则不绘制网格
-
         self.has_showing_data: bool = False
 
 
@@ -56,8 +43,12 @@ class BarChartWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.y_scale = 1.1
         self.plot_area_edge_color: "ColorType" = QColor(0, 0, 0)
+        padding = 80
+        # 注意，当bottom和right为0时，最下边和最右边的边框会因为越界而不显示
+        # padding: (left, top, buttom, right)
+        self.paddings = [padding, padding, padding, padding]
 
         self.axis_x = ValueBarAxis(Orientation.HORIZONTAL)
         self.axis_y = ValueAxis(Orientation.VERTICAL)
@@ -85,9 +76,9 @@ class BarChartWidget(QWidget):
         内部绘制函数无需调用该函数，查看config.output这个缓存的值即可
         """
         output: QRectF = QRectF(self.rect())
-        paddings = config.paddings
-        output = output.adjusted(paddings[0], paddings[1], -paddings[2], -paddings[3])
-        return output
+        paddings = self.paddings
+        output2 = output.adjusted(paddings[0], paddings[1], -paddings[2], -paddings[3])
+        return output2
 
     def drawer_to_ui(self, value: T, config: "ExtraDrawConfig" = None) -> T:
         """
@@ -115,9 +106,7 @@ class BarChartWidget(QWidget):
         self._paint_drawers(config, primary_painter)
 
         # 绘制图表边框
-        primary_painter.setBrush(QBrush(Qt.transparent))
-        primary_painter.setPen(QPen(QColor(self.plot_area_edge_color)))
-        primary_painter.drawRect(config.drawing_cache.plot_area)
+        self._paint_box_edge(config, primary_painter)
 
         # 结束
         primary_painter.end()
@@ -166,6 +155,11 @@ class BarChartWidget(QWidget):
                         painter.setPen(QColor(axis.label_color))
                         axis.draw_labels(copy(config), painter)
 
+    def _paint_box_edge(self, config: "ExtraDrawConfig", painter: "QPainter"):
+        painter.setBrush(QBrush(Qt.transparent))
+        painter.setPen(QPen(QColor(self.plot_area_edge_color)))
+        painter.drawRect(config.drawing_cache.plot_area)
+
     def _prepare_painting(self, config: "ExtraDrawConfig"):
         """
         提前计算一些在绘图时需要的数据
@@ -180,7 +174,7 @@ class BarChartWidget(QWidget):
             y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
 
             # scale y range
-            config.y_low, config.y_high = scale_from_mid(y_low, y_high, config.y_scale)
+            config.y_low, config.y_high = scale_from_mid(y_low, y_high, self.y_scale)
 
         # 一些给其他类使用的中间变量，例如坐标转化矩阵
         self._prepare_drawing_cache(config)
@@ -201,8 +195,16 @@ class BarChartWidget(QWidget):
         plot_area = self.plot_area(config)
         # 应用这个坐标转化
         transform = self._coordinate_transform(drawer_area, plot_area)
+
+        # 去除padding对上下翻转的影响
+        transform *= QTransform.fromTranslate(0, -plot_area.top())
+
         # 在UI坐标系中上下翻转图像
-        transform *= QTransform.fromTranslate(0, self.size().height()).rotate(180, Qt.XAxis)
+        transform *= QTransform.fromTranslate(0, -plot_area.height())
+        transform *= QTransform().rotate(180, Qt.XAxis)
+
+        # 恢复padding
+        transform *= QTransform.fromTranslate(0, plot_area.top())
 
         # 保存一些中间变量
         drawing_cache = DrawingCache()

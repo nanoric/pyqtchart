@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QBrush, QColor, QPainter
@@ -34,8 +34,8 @@ class CandleDrawer(DrawerBase):
     并且管理数据的绘制
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, data_source: Optional["DataSource"] = None):
+        super().__init__(data_source)
         self.body_width = 0.95
         self.line_width = 0.15
         self.minimum_box_height = 0.01

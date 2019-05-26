@@ -12,7 +12,7 @@ class DataSource(list, List[T]):
         super().__init__()
         self._drawers: List["DrawerBase"] = []
 
-    def add_drawer(self, drawer: "DrawerBase"):
-        if drawer not in self._drawers:
-            self._drawers.append(drawer)
-            drawer._data_source = self
+    # def add_drawer(self, drawer: "DrawerBase"):
+    #     if drawer not in self._drawers:
+    #         self._drawers.append(drawer)
+    #         drawer._data_source = self

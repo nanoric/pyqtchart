@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, TypeVar, Union
 
-from PyQt5.QtGui import QFont, QPainter, QColor
+from PyQt5.QtGui import QColor, QFont, QPainter
 
 if TYPE_CHECKING:
     from DataSource import DataSource
@@ -13,7 +13,6 @@ from PyQt5.QtCore import QRectF, QPointF, Qt
 from PyQt5.QtGui import QTransform
 
 T = TypeVar("T")
-
 
 ColorType = Union[
     str,  # "red", "#RGB", "#RRGGBB", "#AARRGGBB", "#RRRGGGBBB", "#RRRRGGGGBBBB"
@@ -32,23 +31,26 @@ class DrawingCache:
         self.drawer_area: Optional['QRectF'] = None  # drawer坐标的世界大小
         self.plot_area: Optional['QRectF'] = None  # UI坐标中属于绘制区域的部分
 
-    def drawer_to_ui(self, value):
+    def drawer_to_ui(self, value: T) -> T:
         """
         将drawer坐标系中的值（点或者矩形）转化为UI坐标系
         """
         return self.drawer_transform.map(value)
 
-    def drawer_x_to_ui(self, value: float):
+    def drawer_x_to_ui(self, value: float) -> float:
         """
         将drawer坐标系中的x值转化为UI坐标系中的x值
         """
-        return self.drawer_transform.map(QPointF(value, 0)).x()
+        return self.drawer_transform.map(QPointF(value, value)).x()
 
-    def drawer_y_to_ui(self, value: float):
+    def drawer_y_to_ui(self, value: float) -> float:
         """
-        将drawer坐标系中的x值转化为UI坐标系中的x值
+        将drawer坐标系中的y值转化为UI坐标系中的y值
         """
-        return self.drawer_transform.map(QPointF(0, value)).y()
+        return self.drawer_transform.map(QPointF(value, value)).y()
+
+    def ui_height_to_drawer(self, value: float) -> float:
+        return value / self.plot_area.height() * self.drawer_area.height()
 
 
 class DrawConfig:
@@ -79,8 +81,8 @@ class DrawerBase(ABC):
     ```
     """
 
-    def __init__(self):
-        self._data_source: Optional["DataSource"] = None
+    def __init__(self, data_source: Optional["DataSource"] = None):
+        self._data_source: Optional["DataSource"] = data_source
 
     @abstractmethod
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
