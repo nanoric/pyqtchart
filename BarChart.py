@@ -5,7 +5,7 @@ from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform
 from PyQt5.QtWidgets import QWidget
 
-from Axis import Orientation, ValueAxis
+from Axis import Orientation, ValueAxis, ValueBarAxis
 from DrawerConfig import DrawConfig, DrawingCache
 from Types import ColorType
 
@@ -59,7 +59,7 @@ class BarChartWidget(QWidget):
 
         self.plot_area_edge_color: "ColorType" = Qt.black
 
-        self.axis_x = ValueAxis(Orientation.HORIZONTAL)
+        self.axis_x = ValueBarAxis(Orientation.HORIZONTAL)
         self.axis_y = ValueAxis(Orientation.VERTICAL)
 
         self._draw_config = ExtraDrawConfig()
@@ -202,7 +202,6 @@ class BarChartWidget(QWidget):
         drawing_cache.drawer_area = drawer_area
         drawing_cache.plot_area = plot_area
         config.drawing_cache = drawing_cache
-
 
     def _switch_painter_to_drawer_coordinate(self, painter: "Layer", config: "ExtraDrawConfig"):
         """
