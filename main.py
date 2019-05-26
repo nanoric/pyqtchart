@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
 
         self.init_ui()
         self.main_chart.add_drawer(CandleDrawer(self.main_data_source))
-        self.main_chart.axis_x = None
+        self.main_chart.axis_x = CandleAxisX(self.main_data_source)
 
         self.sub_chart.add_drawer(BarDrawer(self.sub_data_source))
         self.sub_chart.axis_x = CandleAxisX(self.main_data_source)
@@ -151,9 +151,8 @@ class MainWindow(QMainWindow):
         data = self.datas[self.data_last_index]
 
         self.main_data_source.append(data)
-        self.main_chart.set_x_range(0, self.data_last_index)
-
         self.sub_data_source.append(data.volume)
+        self.main_chart.set_x_range(0, self.data_last_index)
         self.sub_chart.set_x_range(0, self.data_last_index)
 
         self.data_last_index += 1
