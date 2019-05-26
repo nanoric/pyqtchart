@@ -28,6 +28,7 @@ class DrawingCache:
     def __init__(self):
         # intermediate variables to speed up calculation
         self.drawer_transform: Optional["QTransform"] = None  # 坐标转化矩阵(UI->drawer)
+        self.ui_transform: Optional["QTransform"] = None  # 坐标转化矩阵(drawer->UI)
         self.drawer_area: Optional['QRectF'] = None  # drawer坐标的世界大小
         self.plot_area: Optional['QRectF'] = None  # UI坐标中属于绘制区域的部分
 

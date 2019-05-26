@@ -1,17 +1,18 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QBrush, QColor, QPainter
 
 from Axis import StringBarAxis
 from Base import DrawerBase, Orientation
+from DataSource import DataSource
 
 if TYPE_CHECKING:
     from Base import DrawConfig, ColorType
 
-CandleDataSourceType = List["CandleData"]
+CandleDataSourceType = DataSource["CandleData"]
 
 
 @dataclass
@@ -43,6 +44,9 @@ class CandleDrawer(DrawerBase):
 
         # cached variables for draw
         self._length = 0
+        self._cache = None
+        self._cache_begin = 0
+        self._cache_end = 0
 
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
         showing_data = self._data_source[config.begin:config.end]
@@ -78,6 +82,7 @@ class CandleDrawer(DrawerBase):
         return rect
 
 
+# noinspection PyAbstractClass
 class CandleAxisX(StringBarAxis):
 
     def __init__(self, data_source: "CandleDataSourceType"):
@@ -88,7 +93,7 @@ class CandleAxisX(StringBarAxis):
     def prepare_draw(self, config: "DrawConfig"):
         data_source = self.data_source
         n = config.end - config.begin
-        step = int(n / self.label_count)
+        step = int(n / self.label_count) + 1
         self.strings.clear()
         for i in range(config.begin, config.end, step):
             data = data_source[i]

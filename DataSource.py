@@ -1,10 +1,12 @@
-from typing import List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Type, TypeVar, Generic
 
 if TYPE_CHECKING:
     from Base import DrawerBase
 
+T = TypeVar("T")
 
-class DataSource(list):
+
+class DataSource(list, List[T]):
 
     def __init__(self):
         super().__init__()
