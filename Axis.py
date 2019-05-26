@@ -169,6 +169,20 @@ class StringBarAxis(AxisBase):
                               label_height)
             painter.drawText(text_pos, Qt.AlignTop | Qt.AlignLeft, text)
 
+        # draw the last label, and this label may don't has an end anchor
+        begin, end = self._keys[-1]
+        if end is None:
+            end = begin + 100  # should be large enough
+        text = self._values[-1]
+        begin_ui_x = drawing_cache.drawer_x_to_ui(begin)
+        end_ui_x = drawing_cache.drawer_x_to_ui(end)
+
+        text_pos = QRectF(begin_ui_x + self.label_spacing_to_grid,
+                          label_top + self.label_spacing_to_plot_area,
+                          end_ui_x - begin_ui_x,
+                          label_height)
+        painter.drawText(text_pos, Qt.AlignTop | Qt.AlignLeft, text)
+
     def draw_labels_vertical(self, config: "DrawConfig", painter: QPainter):
         raise NotImplementedError()
 
