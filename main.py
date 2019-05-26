@@ -68,16 +68,16 @@ class MainWindow(QMainWindow):
         self.chart.add_drawer(drawer)
         self.chart.axis_x = CandleAxisX(self.data_source)
 
-        # self.t = QTimer()
-        # self.t.timeout.connect(self.on_timer)
-        # self.t.start(10)
+        self.t = QTimer()
+        self.t.timeout.connect(self.on_timer)
 
         # for i in range(3600):
             # for i in range(300):
         for i in range(30):
             self.add_one_data()
 
-        self.on_timer()
+        self.stress_fps_tick()
+        # self.t.start(1000)
 
     def init_ui(self):
         self.chart = BarChartWidget(self)
@@ -98,7 +98,10 @@ class MainWindow(QMainWindow):
 
     def on_timer(self):
         self.add_one_data()
-        QTimer.singleShot(0, self.on_timer)
+
+    def stress_fps_tick(self):
+        self.add_one_data()
+        QTimer.singleShot(0, self.stress_fps_tick)
 
     def add_one_data(self):
         self.chart.repaint()

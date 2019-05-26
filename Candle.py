@@ -43,9 +43,8 @@ class CandleDrawer(DrawerBase):
         self.falling_color: "ColorType" = "green"
 
         # cached variables for draw
-        self._length = 0
-        self._cache = None
-        self._cache_begin = 0
+        self._cache_raising = []
+        self._cache_falling = []
         self._cache_end = 0
 
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
@@ -57,23 +56,43 @@ class CandleDrawer(DrawerBase):
         return config
 
     def draw(self, config: "DrawConfig", painter: "QPainter"):
-        growing_brush = QBrush(QColor(self.growing_color))
+        raising_brush = QBrush(QColor(self.growing_color))
         falling_brush = QBrush(QColor(self.falling_color))
-        for i in range(config.begin, config.end):
+
+        begin, end = config.begin, config.end
+        cache_end = self._cache_end
+
+        data_len = len(self._data_source)
+        if data_len > cache_end:
+            self._generate_cache(cache_end, data_len)
+
+        painter.setBrush(raising_brush)
+        painter.drawRects([i for i in self._cache_raising[begin*2:end*2] if i])
+        painter.setBrush(falling_brush)
+        painter.drawRects([i for i in self._cache_falling[begin*2:end*2] if i])
+
+    def _generate_cache(self, begin, end):
+        for i in range(begin, end):
             data: "CandleData" = self._data_source[i]
 
             if data.open <= data.close:
-                painter.setBrush(growing_brush)
+                push_cache = self._cache_raising
+                nop_cache = self._cache_falling
             else:
-                painter.setBrush(falling_brush)
+                push_cache = self._cache_falling
+                nop_cache = self._cache_raising
 
             # draw box
             box = self.get_rect(i, data.open, data.close, self.body_width)
-            painter.drawRect(box)
+            push_cache.append(box)
+            nop_cache.append(None)
 
             # draw line
             line = self.get_rect(i, data.low, data.high, self.line_width)
-            painter.drawRect(line)
+            push_cache.append(line)
+            nop_cache.append(None)
+
+        self._cache_end = end
 
     def get_rect(self, i, start_y, end_y, width):
         left = i + 0.5 - 0.5 * width
