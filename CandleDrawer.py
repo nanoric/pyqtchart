@@ -1,15 +1,18 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import List, TYPE_CHECKING
 
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QBrush, QPainter, QColor
+from PyQt5.QtCore import QRectF
+from PyQt5.QtGui import QBrush, QColor, QPainter
 
+from Axis import Orientation, StringBarAxis
 from DrawerBase import DrawerBase
 
 if TYPE_CHECKING:
     from DrawerConfig import DrawConfig
     from Types import ColorType
+
+CandleDataSourceType = List["CandleData"]
 
 
 @dataclass
@@ -23,11 +26,6 @@ class CandleData:
     high: float
     close: float
     datetime: datetime
-
-
-@dataclass()
-class CandleStyle:
-    pass
 
 
 class CandleDrawer(DrawerBase):
@@ -79,3 +77,10 @@ class CandleDrawer(DrawerBase):
         rect = QRectF(left, min(start_y, end_y),
                       width, max(abs(start_y - end_y), self.minimum_box_height))
         return rect
+
+
+class CandleAxisX(StringBarAxis):
+
+    def __init__(self, data_source: "CandleDataSourceType"):
+        super().__init__(Orientation.HORIZONTAL)
+        self.data_source: "CandleDataSourceType" = data_source

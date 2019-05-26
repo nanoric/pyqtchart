@@ -4,7 +4,7 @@ from typing import List, TypeVar
 
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPen, QPicture
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
 
 from BarChart import BarChartWidget
 from CandleDrawer import CandleData, CandleDrawer
@@ -19,6 +19,35 @@ class Pen:
 
 class PlotWidget(QPicture):
     pass
+
+
+class FtpCounter(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._refresh_interval_ms = 1000
+        self._tick = 0
+
+        timer = QTimer()
+        timer.timeout.connect(self.update_tick)
+        timer.start(self.refresh_interval_ms)
+        self.timer = timer
+
+    @property
+    def refresh_interval_ms(self):
+        return self._refresh_interval_ms
+
+    @refresh_interval_ms.setter
+    def refresh_interval_ms(self, val):
+        self._refresh_interval_ms = val
+        self.timer.start(self.refresh_interval_ms)
+
+    def tick(self):
+        self._tick += 1
+
+    def update_tick(self):
+        fps = self._tick * 1000 / self.refresh_interval_ms
+        self.setText(f"{fps}")
+        self._tick = 0
 
 
 class MainWindow(QMainWindow):
@@ -38,22 +67,37 @@ class MainWindow(QMainWindow):
         self.init_ui()
         self.chart.add_drawer(drawer)
 
-        self.t = QTimer()
-        self.t.timeout.connect(self.on_timer)
-        self.t.start(10)
+        # self.t = QTimer()
+        # self.t.timeout.connect(self.on_timer)
+        # self.t.start(10)
 
         # for i in range(3600):
             # for i in range(300):
         for i in range(30):
             self.add_one_data()
 
+        self.on_timer()
+
     def init_ui(self):
         self.chart = BarChartWidget(self)
+
         self.setCentralWidget(self.chart)
-        pass
+        self.fps = FtpCounter(self)
+
+        self.hook_paint_event()
+
+    def hook_paint_event(self):
+        org_paint_handler = self.chart.paintEvent
+
+        def paintEventWithFPSCounter(*args):
+            org_paint_handler(*args)
+            self.fps.tick()
+
+        self.chart.paintEvent = paintEventWithFPSCounter
 
     def on_timer(self):
         self.add_one_data()
+        QTimer.singleShot(0, self.on_timer)
 
     def add_one_data(self):
         self.chart.repaint()
