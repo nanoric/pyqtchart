@@ -141,7 +141,10 @@ class BarChartWidget(QWidget):
         painter = QPainter(layer)
 
         # first: grid
+        painter.setBrush(QColor(0, 0, 0, 0))
         for axis in self.axis_x, self.axis_y:
+            if axis.grid_color is not None:
+                painter.setPen(QColor(axis.grid_color))
             axis.draw_grid(copy(config), painter)
 
         # second: edge box
@@ -150,7 +153,13 @@ class BarChartWidget(QWidget):
 
         # last: labels
         for axis in self.axis_x, self.axis_y:
-            axis.draw_labels(copy(config), painter)
+            if axis.label_color is not None:
+                painter.setBrush(QColor(0, 0, 0, 0))
+                painter.setPen(QColor(axis.label_color))
+                painter.setFont(axis.label_font)
+                painter.setBrush(QColor(0, 0, 0, 0))
+                painter.setPen(QColor(axis.label_color))
+                axis.draw_labels(copy(config), painter)
         return layer
 
     def _prepare_painting(self, config):

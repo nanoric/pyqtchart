@@ -56,31 +56,16 @@ class StringAxis(Axis):
         self.strings: Dict[float, str] = {}  # sorted value=>label mapping
 
     def draw_grid(self, config: "DrawConfig", painter: QPainter):
-        grid_color = self.grid_color
-        orientation = self.orientation
-
-        if grid_color is not None:
-            painter.setBrush(QColor(0, 0, 0, 0))
-            painter.setPen(QColor(grid_color))
-            if orientation is Orientation.VERTICAL:
-                return self.draw_grid_vertical(config, painter)
-            if orientation is Orientation.HORIZONTAL:
-                return self.draw_grid_horizontal(config, painter)
+        if self.orientation is Orientation.VERTICAL:
+            return self.draw_grid_vertical(config, painter)
+        if self.orientation is Orientation.HORIZONTAL:
+            return self.draw_grid_horizontal(config, painter)
 
     def draw_labels(self, config: "DrawConfig", painter: QPainter):
-        label_color = self.label_color
-        orientation = self.orientation
-
-        if label_color is not None:
-            painter.setBrush(QColor(0, 0, 0, 0))
-            painter.setPen(QColor(label_color))
-            painter.setFont(self.label_font)
-            painter.setBrush(QColor(0, 0, 0, 0))
-            painter.setPen(QColor(label_color))
-            if orientation is Orientation.VERTICAL:
-                return self.draw_labels_vertical(config, painter)
-            if orientation is Orientation.HORIZONTAL:
-                return self.draw_labels_horizontal(config, painter)
+        if self.orientation is Orientation.VERTICAL:
+            return self.draw_labels_vertical(config, painter)
+        if self.orientation is Orientation.HORIZONTAL:
+            return self.draw_labels_horizontal(config, painter)
 
     def draw_grid_horizontal(self, config: "DrawConfig", painter: QPainter):
         drawing_cache = config.drawing_cache
@@ -176,7 +161,7 @@ class StringBarAxis(Axis):
         grid_bottom = drawing_cache.plot_area.bottom()
 
         for value, label in self.strings.items():
-            ui_x = self.get_horizontal_ui_pos(value, config)
+            ui_x = drawing_cache.drawer_x_to_ui(value)
             top_point = QPointF(ui_x, grid_top)
             bottom_point = QPointF(ui_x, grid_bottom)
             painter.drawLine(top_point, bottom_point)
@@ -188,16 +173,18 @@ class StringBarAxis(Axis):
         grid_right = drawing_cache.plot_area.right()
 
         for value, label in self.strings.items():
-            ui_y = self.get_vertical_ui_pos(value, config)
+            ui_y = drawing_cache.drawer_y_to_ui(value)
             left_point = QPointF(grid_left, ui_y)
             right_point = QPointF(grid_right, ui_y)
             painter.drawLine(left_point, right_point)
 
     def draw_labels_vertical(self, config: "DrawConfig", painter: QPainter):
-        label_right = config.drawing_cache.plot_area.left() - 1
+        drawing_cache = config.drawing_cache
+
+        label_right = drawing_cache.plot_area.left() - 1
 
         for value, label in self.strings.items():
-            ui_y = self.get_vertical_ui_pos(value, config)
+            ui_y = drawing_cache.drawer_y_to_ui(value)
 
             text = f"{value:.2f}"
             text_pos = QRectF(0, ui_y - 10, label_right - self.label_margin, 20)
@@ -205,17 +192,21 @@ class StringBarAxis(Axis):
         pass
 
     def draw_labels_horizontal(self, config: "DrawConfig", painter: QPainter):
-        label_top = config.drawing_cache.plot_area.bottom() + 1
+        drawing_cache = config.drawing_cache
+
+        label_top = drawing_cache.plot_area.bottom() + 1
         label_width = 100 # assume no label is longer than this
         label_height = 100  # assume no label is higher than this
 
         for value, label in self.strings.items():
-            ui_x = self.get_horizontal_ui_pos(value, config)
+            ui_x = drawing_cache.drawer_x_to_ui(value)
 
             text = f"{value:.2f}"
             text_pos = QRectF(ui_x - label_width/2, label_top + self.label_margin,
                               label_width, label_height)
             painter.drawText(text_pos, Qt.AlignTop | Qt.AlignHCenter, text)
+
+
 class ValueAxis(StringAxis):
 
     def __init__(self, orientation: Orientation):
