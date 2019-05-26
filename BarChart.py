@@ -1,7 +1,8 @@
 from copy import copy
+from threading import Lock
 from typing import List, TYPE_CHECKING, TypeVar
 
-from PyQt5.QtCore import QRectF, Qt
+from PyQt5.QtCore import QRectF, Qt, QTimer
 from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform, QBrush
 from PyQt5.QtWidgets import QWidget
 
@@ -67,11 +68,16 @@ class BarChartWidget(QWidget):
         self._draw_config.begin = 0
         self._draw_config.end = 10
 
+        self._repaint_lock = Lock()
+        self._repaint_scheduled = False
+
     def add_drawer(self, drawer: "DrawerBase"):
         self._drawers.append(drawer)
+        self.update()
 
     def set_x_range(self, begin: int, end: int):
         self._draw_config.begin, self._draw_config.end = begin, end
+        self.update()
 
     def plot_area(self, config: "ExtraDrawConfig") -> "QRectF":
         """

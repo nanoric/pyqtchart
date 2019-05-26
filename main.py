@@ -149,9 +149,6 @@ class MainWindow(QMainWindow):
         self.sub_data_source.append(data.volume)
         self.sub_chart.set_x_range(0, self.data_last_index)
 
-        self.main_chart.repaint()
-        self.sub_chart.repaint()
-
         self.data_last_index += 1
         self.n.setText(
             f"# of showing:{self.data_last_index} # of datas: {len(self.main_data_source)}")
