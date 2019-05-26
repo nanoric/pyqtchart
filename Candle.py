@@ -5,12 +5,11 @@ from typing import List, TYPE_CHECKING
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QBrush, QColor, QPainter
 
-from Axis import Orientation, StringBarAxis
-from DrawerBase import DrawerBase
+from Axis import StringBarAxis
+from Base import DrawerBase, Orientation
 
 if TYPE_CHECKING:
-    from DrawerConfig import DrawConfig
-    from Types import ColorType
+    from Base import DrawConfig, ColorType
 
 CandleDataSourceType = List["CandleData"]
 

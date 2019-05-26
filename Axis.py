@@ -1,19 +1,12 @@
-from abc import abstractmethod
-from dataclasses import dataclass
-from enum import Enum, IntFlag, unique
-from typing import TYPE_CHECKING, Tuple, Union, Dict, Optional, List
+from typing import Dict, List, Optional, TYPE_CHECKING, Tuple
 
 from PyQt5.QtCore import QPointF, QRectF, Qt
-from PyQt5.QtGui import QColor, QPainter, QPen, QFont, QFontInfo
+from PyQt5.QtGui import QFontInfo, QPainter
+
+from Base import AxisBase, Orientation
 
 if TYPE_CHECKING:
-    from DrawerConfig import DrawConfig
-    from Types import ColorType
-
-
-class Orientation(Enum):
-    HORIZONTAL = 1
-    VERTICAL = 2
+    from Base import DrawConfig
 
 
 def _generate_sequence(begin, end, step):
@@ -24,31 +17,7 @@ def _generate_sequence(begin, end, step):
         i += step
 
 
-class Axis:
-    def __init__(self, orientation: Orientation):
-        self.orientation = orientation
-
-        self.grid_color: "ColorType" = Qt.lightGray
-
-        self.label_color: "ColorType" = Qt.black
-        self.label_font: QFont = QFont()
-        # spacing to plot_area, right for Vertical Axis, top for Horizontal
-        self.label_spacing_to_plot_area: int = 2
-
-    # @virtual
-    def prepare_draw(self, config: "DrawConfig"):
-        pass
-
-    @abstractmethod
-    def draw_grid(self, config: "DrawConfig", painter: QPainter):
-        pass
-
-    @abstractmethod
-    def draw_labels(self, config: "DrawConfig", painter: QPainter):
-        pass
-
-
-class StringAxis(Axis):
+class StringAxis(AxisBase):
 
     def __init__(self, orientation: Orientation):
         super().__init__(orientation)
@@ -107,7 +76,7 @@ class StringAxis(Axis):
         drawing_cache = config.drawing_cache
 
         label_top = drawing_cache.plot_area.bottom() + 1
-        label_width = 100 # assume no label is longer than this
+        label_width = 100  # assume no label is longer than this
         label_height = 100  # assume no label is higher than this
 
         for value, label in self.strings.items():
@@ -118,7 +87,7 @@ class StringAxis(Axis):
             painter.drawText(text_pos, Qt.AlignTop | Qt.AlignHCenter, label)
 
 
-class StringBarAxis(Axis):
+class StringBarAxis(AxisBase):
 
     def __init__(self, orientation: Orientation):
         super().__init__(orientation)
@@ -142,7 +111,8 @@ class StringBarAxis(Axis):
         self._n = len(self._keys)
         grid_tail_length: int = self.grid_tail_length
         if grid_tail_length is None:
-            grid_tail_length = QFontInfo(self.label_font).pixelSize() + self.label_spacing_to_plot_area
+            grid_tail_length = QFontInfo(
+                self.label_font).pixelSize() + self.label_spacing_to_plot_area
         self._grid_tail_length = grid_tail_length
 
     def draw_grid(self, config: "DrawConfig", painter: QPainter):
@@ -188,7 +158,7 @@ class StringBarAxis(Axis):
             begin, end = self._keys[i]
             text = self._values[i]
             if end is None:
-                end = self._keys[i+1][0]
+                end = self._keys[i + 1][0]
             begin_ui_x = drawing_cache.drawer_x_to_ui(begin)
             end_ui_x = drawing_cache.drawer_x_to_ui(end)
 

@@ -5,12 +5,11 @@ from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform
 from PyQt5.QtWidgets import QWidget
 
-from Axis import Orientation, ValueAxis, ValueBarAxis
-from DrawerConfig import DrawConfig, DrawingCache
-from Types import ColorType
+from Axis import ValueAxis, ValueBarAxis
+from Base import ColorType, DrawConfig, DrawingCache, Orientation
 
 if TYPE_CHECKING:
-    from DrawerBase import DrawerBase
+    from Base import DrawerBase
 
 T = TypeVar("T")
 
@@ -88,7 +87,7 @@ class BarChartWidget(QWidget):
         output = output.adjusted(paddings[0], paddings[1], -paddings[2], -paddings[3])
         return output
 
-    def drawer_to_ui(self, value: T, config: "ExtraDrawConfig"=None) -> T:
+    def drawer_to_ui(self, value: T, config: "ExtraDrawConfig" = None) -> T:
         """
         将value从drawer坐标系转到UI坐标系
         """
@@ -219,4 +218,3 @@ class BarChartWidget(QWidget):
         t *= QTransform.fromScale(rx, ry)
         t *= QTransform.fromTranslate(output.left(), output.top())
         return t
-

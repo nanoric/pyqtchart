@@ -1,7 +1,7 @@
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from DrawerBase import DrawerBase
+    from Base import DrawerBase
 
 
 class DataSource(list):
