@@ -118,10 +118,13 @@ class AxisBase:
 
     def __init__(self, orientation: Orientation):
         palette = QPalette()
+        self.axis_visible: bool = True
         self.orientation = orientation
 
+        self.grid_visible: bool = True
         self.grid_color: "ColorType" = palette.color(QPalette.Dark)
 
+        self.label_visible = True
         self.label_color: "ColorType" = palette.color(QPalette.Foreground)
         self.label_font: QFont = QFont()
         # spacing to plot_area, right for Vertical AxisBase, top for Horizontal

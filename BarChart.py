@@ -45,6 +45,7 @@ class BarChartWidget(QWidget):
         super().__init__(parent)
         self.y_scale = 1.1
         self.plot_area_edge_color: "ColorType" = QColor(0, 0, 0)
+        self.plot_area_edge_visible: bool = True
         padding = 80
         # 注意，当bottom和right为0时，最下边和最右边的边框会因为越界而不显示
         # padding: (left, top, buttom, right)
@@ -128,37 +129,39 @@ class BarChartWidget(QWidget):
         painter.setPen(QPen(Qt.transparent))
         drawer.draw(copy(config), painter)
 
+    def _should_paint_axis(self, axis):
+        return axis and axis.axis_visible and (axis.label_visible or axis.grid_visible)
+
     def _paint_axis(self, config: "ExtraDrawConfig", painter: "QPainter"):
-        for axis in self.axis_x, self.axis_y:
-            if axis:
-                axis.prepare_draw(copy(config))
+        axises = [i for i in (self.axis_x, self.axis_y) if i and self._should_paint_axis(i)]
+        for axis in axises:
+            axis.prepare_draw(copy(config))
         # painter = QPainter(layer)
 
         # first: grid
         if config.has_showing_data:
             painter.setBrush(QColor(0, 0, 0, 0))
-            for axis in self.axis_x, self.axis_y:
-                if axis:
-                    if axis.grid_color is not None:
-                        painter.setPen(QColor(axis.grid_color))
+            for axis in axises:
+                if axis.grid_visible:
+                    painter.setPen(QColor(axis.grid_color))
                     axis.draw_grid(copy(config), painter)
 
         # last: labels
         if config.has_showing_data:
-            for axis in self.axis_x, self.axis_y:
-                if axis:
-                    if axis.label_color is not None:
-                        painter.setBrush(QColor(0, 0, 0, 0))
-                        painter.setPen(QColor(axis.label_color))
-                        painter.setFont(axis.label_font)
-                        painter.setBrush(QColor(0, 0, 0, 0))
-                        painter.setPen(QColor(axis.label_color))
-                        axis.draw_labels(copy(config), painter)
+            for axis in axises:
+                if axis.label_visible:
+                    painter.setBrush(QColor(0, 0, 0, 0))
+                    painter.setPen(QColor(axis.label_color))
+                    painter.setFont(axis.label_font)
+                    painter.setBrush(QColor(0, 0, 0, 0))
+                    painter.setPen(QColor(axis.label_color))
+                    axis.draw_labels(copy(config), painter)
 
     def _paint_box_edge(self, config: "ExtraDrawConfig", painter: "QPainter"):
-        painter.setBrush(QBrush(Qt.transparent))
-        painter.setPen(QPen(QColor(self.plot_area_edge_color)))
-        painter.drawRect(config.drawing_cache.plot_area)
+        if self.plot_area_edge_visible:
+            painter.setBrush(QBrush(Qt.transparent))
+            painter.setPen(QPen(QColor(self.plot_area_edge_color)))
+            painter.drawRect(config.drawing_cache.plot_area)
 
     def _prepare_painting(self, config: "ExtraDrawConfig"):
         """
