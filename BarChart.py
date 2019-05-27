@@ -15,14 +15,6 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-def _generate_sequence(start, end, step):
-    """输出[start, end)中的序列"""
-    i = start
-    while i < end:
-        yield i
-        i += step
-
-
 def scale_from_mid(low, high, ratio):
     mid = (low + high) / 2
     scaled_range_2 = (high - low) / 2 * ratio
@@ -120,8 +112,9 @@ class BarChartWidget(QWidget):
     def _paint_drawers(self, config: "ExtraDrawConfig", painter: "QPainter"):
         if config.has_showing_data:
             for i, s in enumerate(self._drawers):
-                self._switch_painter_to_drawer_coordinate(painter, config)
-                self._paint_drawer(s, config, painter)
+                if s.has_data():
+                    self._switch_painter_to_drawer_coordinate(painter, config)
+                    self._paint_drawer(s, config, painter)
             self._switch_painter_to_ui_coordinate(painter)
 
     def _paint_drawer(self, drawer: "DrawerBase", config: "ExtraDrawConfig", painter: "QPainter"):
@@ -172,9 +165,12 @@ class BarChartWidget(QWidget):
         config.has_showing_data = has_showing_data
 
         if has_showing_data and self._drawers:
-            preferred_configs = [s.prepare_draw(copy(config)) for s in self._drawers]
-            y_low = min(preferred_configs, key=lambda c: c.y_low).y_low
-            y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
+            preferred_configs = [s.prepare_draw(copy(config)) for s in self._drawers if s.has_data()]
+            if preferred_configs:
+                y_low = min(preferred_configs, key=lambda c: c.y_low).y_low
+                y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
+            else:
+                y_low, y_high = 0, 1
 
             # scale y range
             config.y_low, config.y_high = scale_from_mid(y_low, y_high, self.y_scale)

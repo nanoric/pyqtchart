@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from threading import Lock
 from typing import TYPE_CHECKING, TypeVar, Union
 
 from PyQt5.QtGui import QColor, QFont, QPainter, QPalette
@@ -83,7 +84,27 @@ class DrawerBase(ABC):
     """
 
     def __init__(self, data_source: Optional["DataSource"] = None):
-        self._data_source: Optional["DataSource"] = data_source
+        self._data_source: Optional["DataSource"] = None
+        self._data_source_lock = Lock()
+        self.set_data_source(data_source)
+
+    def set_data_source(self, data_source: "DataSource"):
+        with self._data_source_lock:
+            if self._data_source is not data_source:
+                if self._data_source is not None:
+                    self._detach_data_source()
+                self._data_source = data_source
+                self._attach_data_source()
+
+    def has_data(self):
+        return self._data_source is not None and len(self._data_source)
+
+    def on_data_source_data_removed(self, begin: int, end: int):
+        pass
+
+    def on_data_source_destroyed(self):
+        with self._data_source_lock:
+            self._data_source = None
 
     @abstractmethod
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
@@ -107,6 +128,13 @@ class DrawerBase(ABC):
         因为图标并不知道数据的任何细节，所以draw_item函数应该自己检查x值是否越界
         """
         pass
+
+    def _attach_data_source(self):
+        self._data_source.data_removed.connect(self.on_data_source_data_removed)
+        self._data_source.destroyed.connect(self.on_data_source_destroyed)
+
+    def _detach_data_source(self):
+        raise RuntimeError("Rest of DataSource is currently not implemented.")
 
 
 class Orientation(Enum):

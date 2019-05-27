@@ -4,15 +4,14 @@ from datetime import datetime
 from typing import List, TypeVar
 
 import math
-import qdarkstyle
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QColor, QPen, QPicture, QPalette
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget, \
-    QSizePolicy
+from PyQt5.QtGui import QColor, QPen, QPicture
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QSizePolicy, \
+    QVBoxLayout, QWidget
 
 from Axis import CandleAxisX
 from BarChart import BarChartWidget
-from DataSource import DataSource, CandleData
+from DataSource import CandleData, DataSource
 from Drawer import BarDrawer, CandleDrawer
 
 T = TypeVar("T")
@@ -69,20 +68,22 @@ class MainWindow(QMainWindow):
         self.datas = datas
         self.data_last_index = 0
 
-        self.main_data_source = DataSource()
-        self.sub_data_source = DataSource()
+        self.main_data_source = DataSource(self)
+        self.sub_data_source = DataSource(self)
 
         self.init_ui()
         self.main_chart.add_drawer(CandleDrawer(self.main_data_source))
+        self.main_chart.add_drawer(CandleDrawer())
         self.main_chart.axis_x = CandleAxisX(self.main_data_source)
 
         self.sub_chart.add_drawer(BarDrawer(self.sub_data_source))
+        self.sub_chart.add_drawer(BarDrawer())
         self.sub_chart.axis_x = CandleAxisX(self.main_data_source)
 
         self.t = QTimer()
         self.t.timeout.connect(self.on_timer)
 
-        for i in range(3600):
+        for i in range(3000):
             # for i in range(300):
             # for i in range(30):
             self.add_one_data()
@@ -106,11 +107,10 @@ class MainWindow(QMainWindow):
         main_chart.paddings[3] = 0
         sub_chart.paddings[1] = 0
 
-
         status_layout = QHBoxLayout()
         fps = FtpCounter()
         n = QLabel()
-        n.setMaximumHeight(30)
+        n.setMaximumHeight(60)
         status_layout.addWidget(fps)
         status_layout.addWidget(n)
 
@@ -149,6 +149,7 @@ class MainWindow(QMainWindow):
     def add_one_data(self):
         if self.data_last_index == len(self.datas):
             self.data_last_index = 0
+            self.sub_data_source.clear()
         data = self.datas[self.data_last_index]
 
         self.main_data_source.append(data)
@@ -158,7 +159,10 @@ class MainWindow(QMainWindow):
 
         self.data_last_index += 1
         self.n.setText(
-            f"# of showing:{self.data_last_index} # of datas: {len(self.main_data_source)}")
+            f"# of showing:{self.data_last_index} \n"
+            f"# of main datas: {len(self.main_data_source)}\n"
+            f"# of sub datas: {len(self.sub_data_source)}"
+        )
 
 
 def parse_datetime(dt_str: str):
@@ -192,9 +196,9 @@ def read_data():
                 close=close,
                 datetime=datetime,
                 volume=
-                gen_wave(i, 31) +
-            gen_wave(i, 15, 70)+
-            gen_wave(i, 30, 80)
+                gen_wave(i, 31)
+                + gen_wave(i, 15, 70)
+                + gen_wave(i, 30, 80)
             )
             i += 1
             yield bar_data

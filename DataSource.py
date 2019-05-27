@@ -1,28 +1,30 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, List, TypeVar
+from typing import List, TypeVar
+
+from PyQt5.QtCore import QObject, pyqtSignal
 
 T = TypeVar("T")
 
 
-class DataSource(List[T]):
+class DataSource(QObject):
     """
     DataSource for a Drawer.
     A DataSource is just like a list, but not all the operation is supported in list.
     Supported operations are:
     append(), clear(), __len__(), __getitem__(),
     """
+    data_removed = pyqtSignal(int, int)  # (start: int, end: int)
 
-    def __init__(self, data_list: Iterable[T] = None):
-        super().__init__()
-        if data_list is None:
-            data_list = []
-        self.data_list = data_list
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.data_list: List[T] = []
 
     def append(self, object: T) -> None:
         self.data_list.append(object)
 
     def clear(self) -> None:
+        self.data_removed.emit(0, len(self.data_list))
         self.data_list.clear()
 
     def __getitem__(self, item):
@@ -36,9 +38,6 @@ class DataSource(List[T]):
 
     def __repr__(self):
         return repr(self.data_list)
-
-
-CandleDataSourceType = DataSource["CandleData"]
 
 
 @dataclass
