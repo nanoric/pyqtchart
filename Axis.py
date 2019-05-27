@@ -7,10 +7,11 @@ from Base import AxisBase, Orientation
 
 if TYPE_CHECKING:
     from Base import DrawConfig
+    from DataSource import CandleDataSourceType
 
 
 def _generate_sequence(begin, end, step):
-    """输出[start, end)中的序列"""
+    """output a sequence between [start, end)"""
     i = begin
     while i < end:
         yield i
@@ -236,4 +237,26 @@ class ValueBarAxis(StringBarAxis):
             (value, None): self.format % value
             for value in _generate_sequence(begin, end, step)
         }
+        super().prepare_draw(config)
+
+
+# noinspection PyAbstractClass
+class CandleAxisX(StringBarAxis):
+
+    def __init__(self, data_source: "CandleDataSourceType"):
+        super().__init__(Orientation.HORIZONTAL)
+        self.label_count = 5
+        self.data_source: "CandleDataSourceType" = data_source
+
+    def prepare_draw(self, config: "DrawConfig"):
+        data_source = self.data_source
+        n = config.end - config.begin
+        step = int(n / self.label_count) + 1
+        self.strings.clear()
+        for i in range(config.begin, config.end, step):
+            data = data_source[i]
+
+            key = (i, None)
+            label = data.datetime.strftime("%Y-%m-%d")
+            self.strings[key] = label
         super().prepare_draw(config)

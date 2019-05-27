@@ -4,15 +4,16 @@ from datetime import datetime
 from typing import List, TypeVar
 
 import math
+import qdarkstyle
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QColor, QPen, QPicture
+from PyQt5.QtGui import QColor, QPen, QPicture, QPalette
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QVBoxLayout, QWidget, \
     QSizePolicy
 
+from Axis import CandleAxisX
 from BarChart import BarChartWidget
-from Candle import CandleAxisX, CandleData, CandleDrawer
-from DataSource import DataSource
-from Drawer import BarDrawer
+from DataSource import DataSource, CandleData
+from Drawer import BarDrawer, CandleDrawer
 
 T = TypeVar("T")
 
@@ -202,6 +203,7 @@ def read_data():
 def main():
     app = QApplication([])
 
+    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     datas = read_data()
 
     mainWindow = MainWindow(list(datas))

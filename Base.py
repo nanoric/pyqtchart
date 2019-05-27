@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, TypeVar, Union
 
-from PyQt5.QtGui import QColor, QFont, QPainter
+from PyQt5.QtGui import QColor, QFont, QPainter, QPalette
+from PyQt5.QtWidgets import QApplication
 
 if TYPE_CHECKING:
     from DataSource import DataSource
@@ -116,11 +117,12 @@ class Orientation(Enum):
 class AxisBase:
 
     def __init__(self, orientation: Orientation):
+        palette = QPalette()
         self.orientation = orientation
 
-        self.grid_color: "ColorType" = Qt.lightGray
+        self.grid_color: "ColorType" = palette.color(QPalette.Dark)
 
-        self.label_color: "ColorType" = Qt.black
+        self.label_color: "ColorType" = palette.color(QPalette.Foreground)
         self.label_font: QFont = QFont()
         # spacing to plot_area, right for Vertical AxisBase, top for Horizontal
         self.label_spacing_to_plot_area: int = 2

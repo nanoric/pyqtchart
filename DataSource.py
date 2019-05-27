@@ -1,18 +1,53 @@
-from typing import Any, List, TYPE_CHECKING, Type, TypeVar, Generic
-
-if TYPE_CHECKING:
-    from Base import DrawerBase
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Iterable, List, TypeVar
 
 T = TypeVar("T")
 
 
-class DataSource(list, List[T]):
+class DataSource(List[T]):
+    """
+    DataSource for a Drawer.
+    A DataSource is just like a list, but not all the operation is supported in list.
+    Supported operations are:
+    append(), clear(), __len__(), __getitem__(),
+    """
 
-    def __init__(self):
+    def __init__(self, data_list: Iterable[T] = None):
         super().__init__()
-        self._drawers: List["DrawerBase"] = []
+        if data_list is None:
+            data_list = []
+        self.data_list = data_list
 
-    # def add_drawer(self, drawer: "DrawerBase"):
-    #     if drawer not in self._drawers:
-    #         self._drawers.append(drawer)
-    #         drawer._data_source = self
+    def append(self, object: T) -> None:
+        self.data_list.append(object)
+
+    def clear(self) -> None:
+        self.data_list.clear()
+
+    def __getitem__(self, item):
+        return self.data_list[item]
+
+    def __len__(self):
+        return len(self.data_list)
+
+    def __str__(self):
+        return str(self.data_list)
+
+    def __repr__(self):
+        return repr(self.data_list)
+
+
+CandleDataSourceType = DataSource["CandleData"]
+
+
+@dataclass
+class CandleData:
+    """
+    Represent a single record in DataSource for CandleDrawer
+    """
+    open: float
+    low: float
+    high: float
+    close: float
+    datetime: datetime
