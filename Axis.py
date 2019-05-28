@@ -219,6 +219,18 @@ class ValueAxis(StringAxis):
         }
 
 
+class ValueAxisX(ValueAxis):
+
+    def __init__(self):
+        super().__init__(Orientation.HORIZONTAL)
+
+
+class ValueAxisY(ValueAxis):
+
+    def __init__(self):
+        super().__init__(Orientation.VERTICAL)
+
+
 class ValueBarAxis(StringBarAxis):
 
     def __init__(self, orientation: Orientation):

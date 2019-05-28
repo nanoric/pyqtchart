@@ -9,7 +9,8 @@ from PyQt5.QtGui import QColor, QPen, QPicture
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QSizePolicy, \
     QVBoxLayout, QWidget
 
-from Axis import CandleAxisX
+from AdvancedBarChart import AdvancedBarChart
+from Axis import CandleAxisX, ValueAxisY
 from BarChart import BarChartWidget
 from DataSource import CandleData, DataSource
 from Drawer import BarDrawer, CandleDrawer
@@ -65,20 +66,32 @@ class MainWindow(QMainWindow):
 
     def __init__(self, datas: List["MyData"], parent=None):
         super().__init__(parent)
+        self._init_ui()
         self.datas = datas
         self.data_last_index = 0
 
-        self.main_data_source = DataSource(self)
-        self.sub_data_source = DataSource(self)
+        main_data_source = DataSource(self)
+        sub_data_source = DataSource(self)
 
-        self.init_ui()
-        self.main_chart.add_drawer(CandleDrawer(self.main_data_source))
-        self.main_chart.add_drawer(CandleDrawer())
-        self.main_chart.axis_x = CandleAxisX(self.main_data_source)
+        main_chart = BarChartWidget()
+        sub_chart = BarChartWidget()
 
-        self.sub_chart.add_drawer(BarDrawer(self.sub_data_source))
-        self.sub_chart.add_drawer(BarDrawer())
-        self.sub_chart.axis_x = CandleAxisX(self.main_data_source)
+        main_chart.add_drawer(CandleDrawer(main_data_source))
+        main_chart.add_drawer(CandleDrawer())
+        main_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+
+        sub_chart.add_drawer(BarDrawer(sub_data_source))
+        sub_chart.add_drawer(BarDrawer())
+        sub_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+
+        self.main_chart = main_chart
+        self.sub_chart = sub_chart
+
+        self.main_data_source = main_data_source
+        self.sub_data_source = sub_data_source
+
+        self.advanced_chart_widget.add_bar_chart(main_chart, 5)
+        self.advanced_chart_widget.add_bar_chart(sub_chart, 1)
 
         self.t = QTimer()
         self.t.timeout.connect(self.on_timer)
@@ -91,22 +104,10 @@ class MainWindow(QMainWindow):
         self.stress_fps_tick()
         # self.t.start(1000)
 
-    def init_ui(self):
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(0)
-        main_chart = BarChartWidget()
-        size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        size_policy.setVerticalStretch(4)
-        main_chart.setSizePolicy(size_policy)
+        self.hook_paint_event()
 
-        size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        size_policy.setVerticalStretch(1)
-        sub_chart = BarChartWidget()
-        sub_chart.setSizePolicy(size_policy)
-
-        main_chart.paddings[3] = 0
-        sub_chart.paddings[1] = 0
-
+    def _init_ui(self):
+        # status layout
         status_layout = QHBoxLayout()
         fps = FtpCounter()
         n = QLabel()
@@ -114,21 +115,21 @@ class MainWindow(QMainWindow):
         status_layout.addWidget(fps)
         status_layout.addWidget(n)
 
+        # main layout
+        main_layout = QVBoxLayout()
+
+        advanced_chart_widget = AdvancedBarChart()
+
         main_layout.addLayout(status_layout)
-        main_layout.addWidget(main_chart)
-        main_layout.addWidget(sub_chart)
+        main_layout.addWidget(advanced_chart_widget)
 
-        self.main_chart = main_chart
-        self.sub_chart = sub_chart
-
-        widget = QWidget()
-        widget.setLayout(main_layout)
-        self.setCentralWidget(widget)
+        w = QWidget()
+        w.setLayout(main_layout)
+        self.setCentralWidget(w)
+        self.advanced_chart_widget = advanced_chart_widget
 
         self.fps = fps
         self.n = n
-
-        self.hook_paint_event()
 
     def hook_paint_event(self):
         org_paint_handler = self.main_chart.paintEvent

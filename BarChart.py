@@ -1,16 +1,17 @@
 from copy import copy
 from threading import Lock
-from typing import List, TYPE_CHECKING, TypeVar
+from typing import List, TYPE_CHECKING, TypeVar, Iterable
 
 from PyQt5.QtCore import QRectF, Qt, QTimer
-from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform, QBrush
+from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform, QBrush, \
+    QMouseEvent
 from PyQt5.QtWidgets import QWidget
 
-from Axis import ValueAxis, ValueBarAxis
+from Axis import ValueAxis, ValueBarAxis, ValueAxisX, ValueAxisY
 from Base import ColorType, DrawConfig, DrawingCache, Orientation
 
 if TYPE_CHECKING:
-    from Base import DrawerBase
+    from Base import DrawerBase, AxisBase
 
 T = TypeVar("T")
 
@@ -38,13 +39,12 @@ class BarChartWidget(QWidget):
         self.y_scale = 1.1
         self.plot_area_edge_color: "ColorType" = QColor(0, 0, 0)
         self.plot_area_edge_visible: bool = True
-        padding = 80
         # 注意，当bottom和right为0时，最下边和最右边的边框会因为越界而不显示
-        # padding: (left, top, buttom, right)
-        self.paddings = [padding, padding, padding, padding]
+        # padding: (left, top, right, bottom)
+        left, top, right, bottom = 20, 20, 20, 20
+        self.paddings = [left, top, right, bottom]
 
-        self.axis_x = ValueBarAxis(Orientation.HORIZONTAL)
-        self.axis_y = ValueAxis(Orientation.VERTICAL)
+        self._axis_list: List["AxisBase"] = []
 
         self._draw_config = ExtraDrawConfig()
         self._drawers: List["DrawerBase"] = []
@@ -55,6 +55,8 @@ class BarChartWidget(QWidget):
         self._repaint_lock = Lock()
         self._repaint_scheduled = False
 
+        self.setMouseTracking(True)
+
     def add_drawer(self, drawer: "DrawerBase"):
         self._drawers.append(drawer)
         self.update()
@@ -63,14 +65,25 @@ class BarChartWidget(QWidget):
         self._draw_config.begin, self._draw_config.end = begin, end
         self.update()
 
+    def add_axis(self, *axis_list: "AxisBase"):
+        self._axis_list.extend(axis_list)
+
+    def create_default_axis(self):
+        """
+        Create a ValueAxisX and a ValueAxisY then add to this chart.
+        """
+        assert len(self._axis_list) == 0
+        self.add_axis(ValueAxisX(), ValueAxisY())
+
     def plot_area(self, config: "ExtraDrawConfig") -> "QRectF":
         """
         在UI坐标系中计算出绘制区域
         内部绘制函数无需调用该函数，查看config.output这个缓存的值即可
         """
         output: QRectF = QRectF(self.rect())
-        paddings = self.paddings
-        output2 = output.adjusted(paddings[0], paddings[1], -paddings[2], -paddings[3])
+
+        left, top, right, bottom = self.paddings
+        output2 = output.adjusted(left, top, -right, -bottom)
         return output2
 
     def drawer_to_ui(self, value: T, config: "ExtraDrawConfig" = None) -> T:
@@ -106,6 +119,9 @@ class BarChartWidget(QWidget):
         self._draw_config = config
         event.accept()
 
+    def mouseMoveEvent(self, event: QMouseEvent):
+        event.ignore()
+
     #########################################################################
     # Private methods
     #########################################################################
@@ -126,7 +142,7 @@ class BarChartWidget(QWidget):
         return axis and axis.axis_visible and (axis.label_visible or axis.grid_visible)
 
     def _paint_axis(self, config: "ExtraDrawConfig", painter: "QPainter"):
-        axises = [i for i in (self.axis_x, self.axis_y) if i and self._should_paint_axis(i)]
+        axises = [i for i in self._axis_list if i and self._should_paint_axis(i)]
         for axis in axises:
             axis.prepare_draw(copy(config))
         # painter = QPainter(layer)
