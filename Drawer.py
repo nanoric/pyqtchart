@@ -1,13 +1,14 @@
-﻿from typing import Optional, TYPE_CHECKING
+﻿from typing import Optional, TYPE_CHECKING, TypeVar
 
-from PyQt5.QtCore import QRectF
-from PyQt5.QtGui import QBrush, QColor, QPainter
+from PyQt5.QtCore import QPointF, QRectF
+from PyQt5.QtGui import QBrush, QColor, QPainter, QTransform
 
-from Base import DrawerBase
+from DataSource import CandleData, DataSource, DrawerBase
 
 if TYPE_CHECKING:
-    from Base import DrawConfig, ColorType
-    from DataSource import DataSource, CandleData
+    from Base import ColorType
+
+T = TypeVar("T")
 
 
 class CandleDrawer(DrawerBase):
@@ -180,3 +181,54 @@ class BarDrawer(DrawerBase):
 
 
 HistogramDrawer = BarDrawer
+
+
+class DrawingCache:
+
+    def __init__(self):
+        # intermediate variables to speed up calculation
+        self.drawer_transform: Optional["QTransform"] = None  # 坐标转化矩阵(UI->drawer)
+        self.ui_transform: Optional["QTransform"] = None  # 坐标转化矩阵(drawer->UI)
+        self.drawer_area: Optional['QRectF'] = None  # drawer坐标的世界大小
+        # self.drawer_area_width: Optional['float'] = None
+        # self.drawer_area_height: Optional['float'] = None
+        self.plot_area: Optional['QRectF'] = None  # UI坐标中属于绘制区域的部分
+        # self.plot_area_width: Optional['float'] = None
+        # self.plot_area_height: Optional['float'] = None
+        self.p2d_w: Optional[float] = None  # drawer_area.width / plot_area.width
+        self.p2d_h: Optional[float] = None  # drawer_area.height / plot_area.height
+
+    def drawer_to_ui(self, value: T) -> T:
+        """
+        将drawer坐标系中的值（点或者矩形）转化为UI坐标系
+        """
+        return self.drawer_transform.map(value)
+
+    def drawer_x_to_ui(self, value: float) -> float:
+        """
+        将drawer坐标系中的x值转化为UI坐标系中的x值
+        """
+        return self.drawer_transform.map(QPointF(value, value)).x()
+
+    def drawer_y_to_ui(self, value: float) -> float:
+        """
+        将drawer坐标系中的y值转化为UI坐标系中的y值
+        """
+        return self.drawer_transform.map(QPointF(value, value)).y()
+
+    def ui_width_to_drawer(self, value: float) -> float:
+        return value * self.p2d_w
+
+    def ui_height_to_drawer(self, value: float) -> float:
+        return value * self.p2d_h
+
+
+class DrawConfig:
+
+    def __init__(self):
+        self.begin: int = 0  # 第一个绘制的元素
+        self.end: int = 0  # 最后一个绘制的元素+1：也就是说绘制元素的范围为[begin, end)
+        self.y_low: float = 0  # 图表顶端所代表的y值
+        self.y_high: float = 1  # 图表底端所代表的y值
+
+        self.drawing_cache: Optional["DrawingCache"] = None

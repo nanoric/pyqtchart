@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QSiz
     QVBoxLayout, QWidget
 
 from AdvancedBarChart import AdvancedBarChart
-from Axis import CandleAxisX, ValueAxisY
+from Axis import CandleAxisX, ValueAxisY, ValueAxisX, BarAxisY
 from BarChart import BarChartWidget
 from DataSource import CandleData, DataSource
 from Drawer import BarDrawer, CandleDrawer
@@ -78,11 +78,15 @@ class MainWindow(QMainWindow):
 
         main_chart.add_drawer(CandleDrawer(main_data_source))
         main_chart.add_drawer(CandleDrawer())
-        main_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+        # main_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+        # main_chart.add_axis(ValueAxisY())
+        main_chart.add_axis(BarAxisY())
 
         sub_chart.add_drawer(BarDrawer(sub_data_source))
         sub_chart.add_drawer(BarDrawer())
-        sub_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+        # sub_chart.add_axis(ValueAxisX())
+        sub_chart.add_axis(CandleAxisX(main_data_source))
+        # sub_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
 
         self.main_chart = main_chart
         self.sub_chart = sub_chart

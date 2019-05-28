@@ -4,14 +4,15 @@ from typing import List, TYPE_CHECKING, TypeVar, Iterable
 
 from PyQt5.QtCore import QRectF, Qt, QTimer
 from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform, QBrush, \
-    QMouseEvent
+    QMouseEvent, QPalette
 from PyQt5.QtWidgets import QWidget
 
-from Axis import ValueAxis, ValueBarAxis, ValueAxisX, ValueAxisY
-from Base import ColorType, DrawConfig, DrawingCache, Orientation
+from Axis import ValueAxis, ValueAxisX, ValueAxisY, AxisBase
+from Base import ColorType, Orientation
+from Drawer import DrawingCache, DrawConfig
 
 if TYPE_CHECKING:
-    from Base import DrawerBase, AxisBase
+    from DataSource import DrawerBase
 
 T = TypeVar("T")
 
@@ -101,9 +102,14 @@ class BarChartWidget(QWidget):
         # copy config: ensure config is not change while painting
         config: "ExtraDrawConfig" = copy(self._draw_config)
 
-        self._prepare_painting(config)
+        config = self._prepare_painting(config)
         primary_painter = QPainter(self)
         primary_painter.setWorldMatrixEnabled(True)
+
+        # 清除背景
+        primary_painter.setBrush(self.palette().color(QPalette.Background))
+        primary_painter.setPen(Qt.transparent)
+        primary_painter.drawRect(primary_painter.window())
 
         # 绘制坐标轴
         self._paint_axis(config, primary_painter)
@@ -139,12 +145,12 @@ class BarChartWidget(QWidget):
         drawer.draw(copy(config), painter)
 
     def _should_paint_axis(self, axis):
-        return axis and axis.axis_visible and (axis.label_visible or axis.grid_visible)
+        return axis and axis.axis_visible and (axis.tick_visible or axis.grid_visible)
 
     def _paint_axis(self, config: "ExtraDrawConfig", painter: "QPainter"):
         axises = [i for i in self._axis_list if i and self._should_paint_axis(i)]
         for axis in axises:
-            axis.prepare_draw(copy(config))
+            axis.prepare_draw(copy(config), painter)
         # painter = QPainter(layer)
 
         # first: grid
@@ -158,13 +164,9 @@ class BarChartWidget(QWidget):
         # last: labels
         if config.has_showing_data:
             for axis in axises:
-                if axis.label_visible:
+                if axis.tick_visible:
                     painter.setBrush(QColor(0, 0, 0, 0))
-                    painter.setPen(QColor(axis.label_color))
-                    painter.setFont(axis.label_font)
-                    painter.setBrush(QColor(0, 0, 0, 0))
-                    painter.setPen(QColor(axis.label_color))
-                    axis.draw_labels(copy(config), painter)
+                    axis.draw_ticks(copy(config), painter)
 
     def _paint_box_edge(self, config: "ExtraDrawConfig", painter: "QPainter"):
         if self.plot_area_edge_visible:
@@ -193,6 +195,7 @@ class BarChartWidget(QWidget):
 
         # 一些给其他类使用的中间变量，例如坐标转化矩阵
         self._prepare_drawing_cache(config)
+        return config
 
     def _prepare_drawing_cache(self, config: "ExtraDrawConfig"):
         """
@@ -226,7 +229,14 @@ class BarChartWidget(QWidget):
         drawing_cache.drawer_transform = transform
         drawing_cache.ui_transform = transform.inverted()[0]
         drawing_cache.drawer_area = drawer_area
+        # drawing_cache.drawer_area_width = drawer_area.width()
+        # drawing_cache.drawer_area_height = drawer_area.height()
         drawing_cache.plot_area = plot_area
+        # drawing_cache.plot_area_width = plot_area.width()
+        # drawing_cache.plot_area_height = plot_area.height()
+
+        drawing_cache.p2d_w = drawer_area.width() / plot_area.width()
+        drawing_cache.p2d_h = drawer_area.height() / plot_area.height()
 
         config.drawing_cache = drawing_cache
 

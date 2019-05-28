@@ -1,10 +1,11 @@
 from typing import List, TypeVar
 
-from PyQt5.QtGui import QMouseEvent, QPainter
+from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
 
+from Axis import AxisBase
 from BarChart import BarChartWidget
-from Base import AxisBase, DrawConfig, Orientation
+from Base import Orientation
 
 T = TypeVar("T")
 
@@ -13,11 +14,6 @@ class CrossHairAxisX(AxisBase):
 
     def __init__(self):
         super().__init__(Orientation.HORIZONTAL)
-
-    def draw_grid(self, config: "DrawConfig", painter: QPainter):
-        pass
-
-    def draw_labels(self, config: "DrawConfig", painter: QPainter):
         pass
 
 
@@ -25,12 +21,6 @@ class CrossHairAxisY(AxisBase):
 
     def __init__(self):
         super().__init__(Orientation.VERTICAL)
-
-    def draw_grid(self, config: "DrawConfig", painter: QPainter):
-        pass
-
-    def draw_labels(self, config: "DrawConfig", painter: QPainter):
-        pass
 
 
 class CrossHair:
@@ -40,7 +30,7 @@ class CrossHair:
         self.axis_y = CrossHairAxisY()
 
 
-class ValuePannel(QWidget):
+class ValuePanel(QWidget):
     pass
 
 
@@ -57,6 +47,8 @@ class AdvancedBarChart(QWidget):
         super().__init__(parent)
         self._init_ui()
         self._charts: List["BarChartWidget"] = []
+        self._cross_hairs_x: List["CrossHairAxisX"] = []
+        self._cross_hairs_y: List["CrossHairAxisY"] = []
 
     def _init_ui(self):
         main_layout = QVBoxLayout()
@@ -78,10 +70,7 @@ class AdvancedBarChart(QWidget):
     def chart_spacing(self, spacing: int):
         self.main_layout.setSpacing(spacing)
 
-    def add_bar_chart(self, chart: "BarChartWidget", weight: int = 1, show_cross_hair: bool = True):
-        # size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        # size_policy.setVerticalStretch(weight)
-        # chart.setSizePolicy(size_policy)
+    def add_bar_chart(self, chart: "BarChartWidget", weight: int = 1):
         if chart not in self._charts:
             # fix padding
             left, right = 80, 10
@@ -93,7 +82,13 @@ class AdvancedBarChart(QWidget):
             chart.paddings = (left, top, right, bottom)
 
             # add axis as cross_hair
-            chart.add_axis()
+            # cross_hair_x = CrossHairAxisX()
+            # cross_hair_y = CrossHairAxisY()
+            # chart.cross_hair_axises = (cross_hair_x, cross_hair_y)
+            # chart.add_axis(cross_hair_x, cross_hair_y)
 
             self.main_layout.addWidget(chart, weight)
+
+            # self._cross_hairs_x.append(cross_hair_x)
+            # self._cross_hairs_y.append(cross_hair_y)
             self._charts.append(chart)

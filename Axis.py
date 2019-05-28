@@ -1,12 +1,13 @@
-from typing import Dict, List, Optional, TYPE_CHECKING, Tuple
+from abc import ABC, abstractmethod
+from typing import Optional, TYPE_CHECKING
 
-from PyQt5.QtCore import QPointF, QRectF, Qt
-from PyQt5.QtGui import QFontInfo, QPainter
+from PyQt5.QtCore import QRectF, Qt
+from PyQt5.QtGui import QFont, QPainter, QPalette, QPen, QPicture
 
-from Base import AxisBase, Orientation
+from Base import ColorType, Orientation, TickPosition, TickSource, TickType
 
 if TYPE_CHECKING:
-    from Base import DrawConfig
+    from Drawer import DrawConfig
     from DataSource import CandleDataSourceType
 
 
@@ -18,257 +19,185 @@ def _generate_sequence(begin, end, step):
         i += step
 
 
-class StringAxis(AxisBase):
+Tick = QPicture
 
-    def __init__(self, orientation: Orientation):
-        super().__init__(orientation)
 
-        self.strings: Dict[float, str] = {}  # sorted value=>label mapping
+class AxisBase(ABC):
+
+    def __init__(self, orientation: "Orientation", tick_type: "TickType"):
+        palette = QPalette()
+        self.axis_visible: bool = True
+        self.orientation = orientation
+
+        self.grid_visible: bool = True
+        self.grid_color: "ColorType" = palette.color(QPalette.Dark)
+
+        self.tick_visible = True
+        self.tick_type = tick_type
+        self.tick_count = 5
+
+        # for tick_type == TickType.BAR only:
+        self.tick_source = TickSource.BEGIN
+        self.tick_position = TickPosition.BEGIN
+        self.grid_tail_length: Optional[int] = None  # None means auto
+        self.tick_spacing_to_grid: int = 2
+
+        # spacing to plot_area: spacing-right for Vertical AxisBase, spacing-top for Horizontal
+        self.tick_spacing_to_plot_area: int = 2
+
+    @property
+    def tick_type(self):
+        return self._tick_type
+
+    @tick_type.setter
+    def tick_type(self, value: "TickType"):
+        if value == TickType.VALUE:
+            from private.ValueAxisHelper import ValueAxisHelper
+            self._helper = ValueAxisHelper(self)
+        else:
+            from private.ValueAxisHelper import BarAxisHelper
+            self._helper = BarAxisHelper(self)
+        self._tick_type = value
+
+    def prepare_draw(self, config: "DrawConfig", painter: "QPainter"):
+        self.prepare_draw_tick(config, painter)
+        self._helper.prepare_draw(config, painter)
 
     def draw_grid(self, config: "DrawConfig", painter: QPainter):
-        if self.orientation is Orientation.VERTICAL:
-            return self.draw_grid_vertical(config, painter)
-        if self.orientation is Orientation.HORIZONTAL:
-            return self.draw_grid_horizontal(config, painter)
+        self._helper.draw_grid(config, painter)
 
-    def draw_labels(self, config: "DrawConfig", painter: QPainter):
-        if self.orientation is Orientation.VERTICAL:
-            return self.draw_labels_vertical(config, painter)
-        if self.orientation is Orientation.HORIZONTAL:
-            return self.draw_labels_horizontal(config, painter)
+    def draw_ticks(self, config: "DrawConfig", painter: QPainter):
+        self.prepare_draw_tick(config, painter)
+        self._helper.draw_ticks(config, painter)
 
-    def draw_grid_horizontal(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
+    def draw_tick_for_bar(self, value: float, head: float, tail: float,
+                          painter: "QPainter") -> "Tick":
+        return self.draw_tick_for_value(value, painter)
 
-        grid_top = drawing_cache.plot_area.top()
-        grid_bottom = drawing_cache.plot_area.bottom()
+    def tick_bounding_rect_for_bar(self,
+                                   value: float,
+                                   head: float,
+                                   tail: float,
+                                   painter: "QPainter") -> "QRectF":
+        return self.tick_bounding_rect_for_value(value, painter)
 
-        for value, label in self.strings.items():
-            ui_x = drawing_cache.drawer_x_to_ui(value)
-            top_point = QPointF(ui_x, grid_top)
-            bottom_point = QPointF(ui_x, grid_bottom)
-            painter.drawLine(top_point, bottom_point)
-
-    def draw_grid_vertical(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-
-        grid_left = drawing_cache.plot_area.left() - 1
-        grid_right = drawing_cache.plot_area.right()
-
-        for value, label in self.strings.items():
-            ui_y = drawing_cache.drawer_y_to_ui(value)
-            left_point = QPointF(grid_left, ui_y)
-            right_point = QPointF(grid_right, ui_y)
-            painter.drawLine(left_point, right_point)
-
-    def draw_labels_horizontal(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-
-        label_top = drawing_cache.plot_area.bottom() + 1
-        label_width = 100  # assume no label is longer than this
-        label_height = 100  # assume no label is higher than this
-
-        for value, label in self.strings.items():
-            ui_x = drawing_cache.drawer_x_to_ui(value)
-
-            text_pos = QRectF(ui_x - label_width / 2, label_top + self.label_spacing_to_plot_area,
-                              label_width, label_height)
-            painter.drawText(text_pos, Qt.AlignTop | Qt.AlignHCenter, label)
-
-    def draw_labels_vertical(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-
-        label_right = drawing_cache.plot_area.left() - 1
-
-        for value, label in self.strings.items():
-            ui_y = drawing_cache.drawer_y_to_ui(value)
-
-            text_pos = QRectF(0, ui_y - 10, label_right - self.label_spacing_to_plot_area, 20)
-            painter.drawText(text_pos, Qt.AlignRight | Qt.AlignVCenter, label)
+    @abstractmethod
+    def prepare_draw_tick(self, config: "DrawConfig", painter: "QPainter"):
+        """
+        Call before any call to tick_for_xxx or tick_bounding_rect_for_xxx
+        You should do set pen, brush and font here.
+        """
         pass
 
-
-class StringBarAxis(AxisBase):
-
-    def __init__(self, orientation: Orientation):
-        super().__init__(orientation)
-        # sorted [begin, end)=>label mapping
-        Key = Tuple[float, Optional[float]]
-        self.strings: Dict[Key, str] = {}
-
-        # 网格探出绘图框的长度（有了这个，各个label的范围更明显） None为文字高度+margin
-        self.grid_tail_length: Optional[int] = None
-        self.label_spacing_to_grid = self.label_spacing_to_plot_area
-
-        # intermediate variables
-        self._keys: List[Key] = []
-        self._values: List[str] = []
-        self._n: int = 0
-        self._grid_tail_length: int = 5
-
-    def prepare_draw(self, config: "DrawConfig"):
-        self._keys = list(self.strings.keys())
-        self._values = list(self.strings.values())
-        self._n = len(self._keys)
-        grid_tail_length: int = self.grid_tail_length
-        if grid_tail_length is None:
-            grid_tail_length = QFontInfo(
-                self.label_font).pixelSize() + self.label_spacing_to_plot_area
-        self._grid_tail_length = grid_tail_length
-
-    def draw_grid(self, config: "DrawConfig", painter: QPainter):
-        if self.orientation is Orientation.VERTICAL:
-            return self.draw_grid_vertical(config, painter)
-        if self.orientation is Orientation.HORIZONTAL:
-            return self.draw_grid_horizontal(config, painter)
-
-    def draw_labels(self, config: "DrawConfig", painter: QPainter):
-        if self.orientation is Orientation.VERTICAL:
-            return self.draw_labels_vertical(config, painter)
-        if self.orientation is Orientation.HORIZONTAL:
-            return self.draw_labels_horizontal(config, painter)
-
-    def draw_grid_horizontal(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-
-        grid_top = drawing_cache.plot_area.top()
-        grid_bottom = drawing_cache.plot_area.bottom() + self._grid_tail_length
-
-        for i in range(self._n):
-            begin, end = self._keys[i]
-            ui_x = drawing_cache.drawer_x_to_ui(begin)
-            top_point = QPointF(ui_x, grid_top)
-            bottom_point = QPointF(ui_x, grid_bottom)
-            painter.drawLine(top_point, bottom_point)
-            if end is not None:
-                ui_x = drawing_cache.drawer_x_to_ui(begin)
-                top_point = QPointF(ui_x, grid_top)
-                bottom_point = QPointF(ui_x, grid_bottom)
-                painter.drawLine(top_point, bottom_point)
-
-    def draw_grid_vertical(self, config: "DrawConfig", painter: QPainter):
+    @abstractmethod
+    def tick_bounding_rect_for_value(self,
+                                     value: float,
+                                     painter: "QPainter") -> "QRectF":
+        """
+        :return the size of drawn picture.
+        """
         raise NotImplementedError()
 
-    def draw_labels_horizontal(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-
-        label_top = drawing_cache.plot_area.bottom() + 1
-        label_height = 100  # assume no label is higher than this
-
-        for i in range(self._n - 1):
-            begin, end = self._keys[i]
-            text = self._values[i]
-            if end is None:
-                end = self._keys[i + 1][0]
-            begin_ui_x = drawing_cache.drawer_x_to_ui(begin)
-            end_ui_x = drawing_cache.drawer_x_to_ui(end)
-
-            text_pos = QRectF(begin_ui_x + self.label_spacing_to_grid,
-                              label_top + self.label_spacing_to_plot_area,
-
-                              end_ui_x - begin_ui_x,
-                              label_height)
-            painter.drawText(text_pos, Qt.AlignTop | Qt.AlignLeft, text)
-
-        # draw the last label, and this label may don't has an end anchor
-        begin, end = self._keys[-1]
-        text = self._values[-1]
-        begin_ui_x = drawing_cache.drawer_x_to_ui(begin)
-        if end is None:
-            end_ui_x = drawing_cache.drawer_area.right() + 3000  # should be large enough
-        else:
-            end_ui_x = drawing_cache.drawer_x_to_ui(end)
-
-        text_pos = QRectF(begin_ui_x + self.label_spacing_to_grid,
-                          label_top + self.label_spacing_to_plot_area,
-                          end_ui_x - begin_ui_x,
-                          label_height)
-        painter.drawText(text_pos, Qt.AlignTop | Qt.AlignLeft, text)
-
-    def draw_labels_vertical(self, config: "DrawConfig", painter: QPainter):
+    @abstractmethod
+    def draw_tick_for_value(self, value: float, painter: "QPainter") -> "Tick":
+        """
+        Draw your tick at (0,0)
+        Size to draw should be the same as return value of tick_bounding_rect_for_value().
+        """
         raise NotImplementedError()
 
 
-class ValueAxis(StringAxis):
+TextFlag = Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap
 
-    def __init__(self, orientation: Orientation):
-        super().__init__(orientation)
+
+class TextAxisBase(AxisBase):
+
+    def __init__(self, orientation: "Orientation", tick_type: "TickType"):
+        super().__init__(orientation, tick_type)
+        palette = QPalette()
+        self.label_color = palette.color(QPalette.Foreground)
+        self.label_font = QFont()
+
+    def prepare_draw_tick(self, config: "DrawConfig", painter: "QPainter"):
+        painter.setFont(self.label_font)
+        painter.setPen(QPen(self.label_color))
+
+    def draw_tick_for_value(self, value: float, painter: "QPainter") -> "Tick":
+        label = self.label_for_value(value)
+        painter.drawText(0, 0, 1000, 1000, TextFlag, label)
+
+    def draw_tick_for_bar(self, value: float, head: float, tail: float,
+                          painter: "QPainter") -> "Tick":
+        label = self.label_for_bar(value, head, tail)
+        painter.drawText(0, 0, 1000, 1000, TextFlag, label)
+
+    def tick_bounding_rect_for_bar(self,
+                                   value: float,
+                                   head: float,
+                                   tail: float,
+                                   painter: "QPainter") -> "QRectF":
+        text = self.label_for_bar(value, head, tail)
+        return QRectF(painter.boundingRect(0, 0, 1000, 1000, TextFlag,
+                                    text))
+
+    def tick_bounding_rect_for_value(self,
+                                     value: float,
+                                     painter: "QPainter") -> "QRectF":
+        text = self.label_for_value(value)
+        return painter.boundingRect(0, 0, 1000, 1000, TextFlag,
+                                    text)
+
+    def label_for_bar(self, value: float, start: float, end: float) -> str:
+        return self.label_for_value(value)
+
+    @abstractmethod
+    def label_for_value(self, value: float) -> str:
+        raise NotImplementedError()
+
+
+class ValueAxis(TextAxisBase):
+
+    def __init__(self, orientation: Orientation, tick_type: "TickType"):
+        super().__init__(orientation, tick_type)
         self.tick_count: int = 10
         self.format: str = "%.2f"
-        self.show_lowest = False
-        self.show_highest = False
 
-    # @virtual
-    def prepare_draw(self, config: "DrawConfig"):
-        font_height = QFontInfo(self.label_font).pixelSize() + 2
-        font_height_in_drawer = config.drawing_cache.ui_height_to_drawer(font_height)
-        if self.orientation is Orientation.HORIZONTAL:
-            begin, end = config.begin, config.end
-        else:
-            begin, end = config.y_low, config.y_high
-
-        if not self.show_lowest:
-            begin += font_height_in_drawer
-        if not self.show_highest:
-            end -= font_height_in_drawer
-
-        step = (end - begin) / self.tick_count
-        self.strings = {
-            value: self.format % value
-            for value in _generate_sequence(begin, end, step)
-        }
+    def label_for_value(self, value: float) -> str:
+        return self.format % value
 
 
 class ValueAxisX(ValueAxis):
 
     def __init__(self):
-        super().__init__(Orientation.HORIZONTAL)
+        super().__init__(Orientation.HORIZONTAL, TickType.VALUE)
 
 
 class ValueAxisY(ValueAxis):
 
     def __init__(self):
-        super().__init__(Orientation.VERTICAL)
+        super().__init__(Orientation.VERTICAL, TickType.VALUE)
 
 
-class ValueBarAxis(StringBarAxis):
+class BarAxisX(ValueAxis):
 
-    def __init__(self, orientation: Orientation):
-        super().__init__(orientation)
-        self.tick_count: int = 10
-        self.format: str = "%d"
+    def __init__(self):
+        super().__init__(Orientation.HORIZONTAL, TickType.BAR)
 
-    # @virtual
-    def prepare_draw(self, config: "DrawConfig"):
-        if self.orientation is Orientation.HORIZONTAL:
-            begin, end = config.begin, config.end
-        else:
-            begin, end = config.y_low, config.y_high
-        step = (end - begin) / self.tick_count
-        self.strings = {
-            (value, None): self.format % value
-            for value in _generate_sequence(begin, end, step)
-        }
-        super().prepare_draw(config)
+
+class BarAxisY(ValueAxis):
+
+    def __init__(self):
+        super().__init__(Orientation.VERTICAL, TickType.BAR)
 
 
 # noinspection PyAbstractClass
-class CandleAxisX(StringBarAxis):
+class CandleAxisX(TextAxisBase):
 
     def __init__(self, data_source: "CandleDataSourceType"):
-        super().__init__(Orientation.HORIZONTAL)
+        super().__init__(Orientation.HORIZONTAL, TickType.BAR)
         self.label_count = 5
         self.data_source: "CandleDataSourceType" = data_source
+        self.foramt = "%Y-%m-%d"
 
-    def prepare_draw(self, config: "DrawConfig"):
-        data_source = self.data_source
-        n = config.end - config.begin
-        step = int(n / self.label_count) + 1
-        self.strings.clear()
-        for i in range(config.begin, config.end, step):
-            data = data_source[i]
-
-            key = (i, None)
-            label = data.datetime.strftime("%Y-%m-%d")
-            self.strings[key] = label
-        super().prepare_draw(config)
+    def label_for_value(self, value: float) -> str:
+        return self.data_source[int(value)].datetime.strftime(self.foramt)
