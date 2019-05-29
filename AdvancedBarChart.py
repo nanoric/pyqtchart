@@ -4,79 +4,39 @@ from PyQt5.QtCore import QPointF, QRectF
 from PyQt5.QtGui import QMouseEvent, QPainter
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
 
-from Axis import AutoTickAxisBase, AxisBase
+from Axis import AxisBase
 from BarChart import BarChartWidget
 from Base import Orientation
 from Drawer import DrawConfig
-from private.ValueAxisHelper import WorldTransformStack
 
 T = TypeVar("T")
 
 
-class CrossHairAxisX(AxisBase, WorldTransformStack):
+class CrossHairAxisX(AxisBase):
 
-    def __init__(self, underlying_axis: AutoTickAxisBase):
+    def __init__(self, underlying_axis: AxisBase):
         super().__init__(Orientation.HORIZONTAL)
         self.underlying_axis = underlying_axis
         self.x = 0
 
     def draw_grids(self, config: "DrawConfig", painter: QPainter):
-        x = self.x
-        plot_area = config.drawing_cache.plot_area
-        if plot_area.left() < x < plot_area.right():
-            top = plot_area.top()
-            bottom = plot_area.bottom()
-            painter.drawLine(x, top, x, bottom)
+        return
 
-    def draw_ticks(self, config: "DrawConfig", painter: QPainter):
-        drawing_cache = config.drawing_cache
-        plot_area = drawing_cache.plot_area
-        x = self.x
-        if plot_area.left() < x < plot_area.right():
-            index = int(x * drawing_cache.p2d_w)
-            rect = self.underlying_axis.tick_bounding_rect_for_value(x, painter)
-
-            pos = QPointF(x - rect.width() / 2,
-                          drawing_cache.plot_area.bottom() + self.tick_spacing_to_plot_area
-                          )
-
-            self.switch_to_pos(pos, painter)
-            self.underlying_axis.draw_tick_for_value(index+config.begin, painter)
-            self.switch_back(painter)
-
-    def prepare_draw_tick(self, config: "DrawConfig", painter: "QPainter"):
-        return self.underlying_axis.prepare_draw_tick(config, painter)
-
-    def tick_bounding_rect_for_value(self, value: float, painter: "QPainter") -> "QRectF":
-        return self.underlying_axis.tick_bounding_rect_for_value(value, painter)
-
-    def draw_tick_for_value(self, value: float, painter: "QPainter"):
-        return self.underlying_axis.draw_tick_for_value(value, painter)
+    def draw_labels(self, config: "DrawConfig", painter: QPainter):
+        return
 
 
 class CrossHairAxisY(AxisBase):
 
-    def __init__(self, underlying_axis: AutoTickAxisBase):
+    def __init__(self, underlying_axis: AxisBase):
         super().__init__(Orientation.VERTICAL)
         self.underlying_axis = underlying_axis
 
     def draw_grids(self, config: "DrawConfig", painter: QPainter):
         return
-        x = int(self.x)
-        left = config.drawing_cache.plot_area.left()
-        right = config.drawing_cache.plot_area.right()
-        painter.drawLine(left, y, right, y)
 
-    def draw_ticks(self, config: "DrawConfig", painter: QPainter):
+    def draw_labels(self, config: "DrawConfig", painter: QPainter):
         return
-        self.underlying_axis.draw_tick_for_value(self)
-
-
-class CrossHair:
-
-    def __init__(self):
-        self.axis_x = CrossHairAxisX()
-        self.axis_y = CrossHairAxisY()
 
 
 class ValuePanel(QWidget):

@@ -111,7 +111,7 @@ class CandlestickView(QtChart.QChartView):
         # config
         self.x_zoom_scale_ratio = 0.5
         self.max_padding_days = 3  # 最多显示的空白数据数量，也就是限制self.showing_index_end的最大值
-        self.y_tick_count = 30
+        self.y_label_count = 30
         self.y_scale_threshold = 1.1
 
         # status variables
@@ -240,7 +240,7 @@ class CandlestickView(QtChart.QChartView):
         self.y_min = new_y_low
         self.y_max = new_y_high
         self.y_range = self.y.max() - self.y.min()
-        self.y.setTickCount(self.y_tick_count)
+        self.y.setTickCount(self.y_label_count)
 
     def calculate_new_y_range(self, records_to_show):
         price_low, price_high = get_price_range(records_to_show)

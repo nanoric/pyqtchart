@@ -157,7 +157,7 @@ class BarChartWidget(QWidget):
         drawer.draw(copy(config), painter)
 
     def _should_paint_axis(self, axis):
-        return axis and axis.axis_visible and (axis.tick_visible or axis.grid_visible)
+        return axis and axis.axis_visible and (axis.label_visible or axis.grid_visible)
 
     def _paint_axis(self, config: "ExtraDrawConfig", painter: "QPainter"):
         axises = [i for i in self._axis_list if i and self._should_paint_axis(i)]
@@ -168,17 +168,17 @@ class BarChartWidget(QWidget):
         if config.has_showing_data:
             painter.setBrush(QColor(0, 0, 0, 0))
             for axis in axises:
-                if axis.grid_visible:
+                if axis.grids_visible:
                     axis.prepare_draw_grids(config, painter)
                     axis.draw_grids(copy(config), painter)
 
         # last: labels
         if config.has_showing_data:
             for axis in axises:
-                if axis.tick_visible:
-                    axis.prepare_draw_ticks(config, painter)
+                if axis.labels_visible:
+                    axis.prepare_draw_labels(config, painter)
                     painter.setBrush(QColor(0, 0, 0, 0))
-                    axis.draw_ticks(copy(config), painter)
+                    axis.draw_labels(copy(config), painter)
 
     def _paint_box_edge(self, config: "ExtraDrawConfig", painter: "QPainter"):
         if self.plot_area_edge_visible:
