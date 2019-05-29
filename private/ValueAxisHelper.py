@@ -9,7 +9,7 @@ from Base import Orientation, TickPosition, TickSource
 from Drawer import DrawConfig
 
 if TYPE_CHECKING:
-    from Axis import AxisBase
+    from Axis import AutoTickAxisBase
 
 
 def _generate_sequence(begin, end, step):
@@ -20,9 +20,10 @@ def _generate_sequence(begin, end, step):
         i += step
 
 
-class AxisHelper(ABC):
+class AxisHelper(ABC, WorldTransformStack):
 
-    def __init__(self, axis: "AxisBase"):
+    def __init__(self, axis: "AutoTickAxisBase"):
+        super().__init__()
         self.axis = axis
         self._last_transform = None
 
@@ -38,18 +39,10 @@ class AxisHelper(ABC):
     def draw_ticks(self, config: "DrawConfig", painter: QPainter):
         raise NotImplementedError()
 
-    def _switch_to_pos(self, pos: QPointF, painter: "QPainter"):
-        self._last_transform = painter.worldTransform()
-        new_transform = self._last_transform * QTransform.fromTranslate(pos.x(), pos.y())
-        painter.setWorldTransform(new_transform)
-
-    def _switch_back(self, painter: "QPainter"):
-        painter.setWorldTransform(self._last_transform)
-
 
 class ValueAxisHelper(AxisHelper):
 
-    def __init__(self, axis: "AxisBase"):
+    def __init__(self, axis: "AutoTickAxisBase"):
         super().__init__(axis)
         self._tick_for_values: Dict[float, QRectF] = {}
 
@@ -122,9 +115,9 @@ class ValueAxisHelper(AxisHelper):
                           tick_top,
                           )
 
-            self._switch_to_pos(pos, painter)
+            self.switch_to_pos(pos, painter)
             self.axis.draw_tick_for_value(value, painter)
-            self._switch_back(painter)
+            self.switch_back(painter)
 
     def draw_ticks_vertical(self, config: "DrawConfig", painter: QPainter):
         drawing_cache = config.drawing_cache
@@ -139,9 +132,9 @@ class ValueAxisHelper(AxisHelper):
             pos = QPointF(
                 tick_right - tick_width,
                 ui_y - tick_height / 2)
-            self._switch_to_pos(pos, painter)
+            self.switch_to_pos(pos, painter)
             self.axis.draw_tick_for_value(value, painter)
-            self._switch_back(painter)
+            self.switch_back(painter)
 
 
 @dataclass()
@@ -155,7 +148,7 @@ class BarInfo:
 
 class BarAxisHelper(AxisHelper):
 
-    def __init__(self, axis: "AxisBase"):
+    def __init__(self, axis: "AutoTickAxisBase"):
         super().__init__(axis)
 
         # intermediate variables
@@ -290,9 +283,9 @@ class BarAxisHelper(AxisHelper):
                           tick_top,
                           )
 
-            self._switch_to_pos(pos, painter)
+            self.switch_to_pos(pos, painter)
             self.axis.draw_tick_for_value(bar.tick_value, painter)
-            self._switch_back(painter)
+            self.switch_back(painter)
 
     def draw_ticks_vertical(self, config: "DrawConfig", painter: QPainter):
         drawing_cache = config.drawing_cache
@@ -304,6 +297,6 @@ class BarAxisHelper(AxisHelper):
             pos = QPointF(
                 tick_right - bar.rect.width(),
                 ui_y - bar.rect.height())
-            self._switch_to_pos(pos, painter)
+            self.switch_to_pos(pos, painter)
             self.axis.draw_tick_for_value(bar.tick_value, painter)
-            self._switch_back(painter)
+            self.switch_back(painter)

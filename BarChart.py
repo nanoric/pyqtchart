@@ -66,6 +66,18 @@ class BarChartWidget(QWidget):
         self._draw_config.begin, self._draw_config.end = begin, end
         self.update()
 
+    @property
+    def all_axis(self):
+        return self._axis_list
+
+    @property
+    def all_axis_x(self):
+        return [i for i in self._axis_list if i.orientation is Orientation.HORIZONTAL]
+
+    @property
+    def all_axis_y(self):
+        return [i for i in self._axis_list if i.orientation is Orientation.VERTICAL]
+
     def add_axis(self, *axis_list: "AxisBase"):
         self._axis_list.extend(axis_list)
 
@@ -150,21 +162,21 @@ class BarChartWidget(QWidget):
     def _paint_axis(self, config: "ExtraDrawConfig", painter: "QPainter"):
         axises = [i for i in self._axis_list if i and self._should_paint_axis(i)]
         for axis in axises:
-            axis.prepare_draw(copy(config), painter)
-        # painter = QPainter(layer)
+            axis.prepare_draw_axis(copy(config), painter)
 
         # first: grid
         if config.has_showing_data:
             painter.setBrush(QColor(0, 0, 0, 0))
             for axis in axises:
                 if axis.grid_visible:
-                    painter.setPen(QColor(axis.grid_color))
-                    axis.draw_grid(copy(config), painter)
+                    axis.prepare_draw_grids(config, painter)
+                    axis.draw_grids(copy(config), painter)
 
         # last: labels
         if config.has_showing_data:
             for axis in axises:
                 if axis.tick_visible:
+                    axis.prepare_draw_ticks(config, painter)
                     painter.setBrush(QColor(0, 0, 0, 0))
                     axis.draw_ticks(copy(config), painter)
 
