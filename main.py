@@ -13,7 +13,7 @@ from AdvancedBarChart import AdvancedBarChart
 from Axis import CandleAxisX, ValueAxisY, ValueAxisX, BarAxisY
 from BarChart import BarChartWidget
 from DataSource import CandleData, DataSource
-from Drawer import BarDrawer, CandleDrawer
+from Drawer import BarChartDrawer, CandleDrawer
 
 T = TypeVar("T")
 
@@ -78,15 +78,15 @@ class MainWindow(QMainWindow):
 
         main_chart.add_drawer(CandleDrawer(main_data_source))
         main_chart.add_drawer(CandleDrawer())
-        # main_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+        main_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
 
         # test for main chart axis
-        main_chart.add_axis(ValueAxisY())
+        # main_chart.add_axis(ValueAxisY())
         # main_chart.add_axis(BarAxisY())
 
-        sub_chart.add_drawer(BarDrawer(sub_data_source))
-        sub_chart.add_drawer(BarDrawer())
-        # sub_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
+        sub_chart.add_drawer(BarChartDrawer(sub_data_source))
+        sub_chart.add_drawer(BarChartDrawer())
+        sub_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
 
         # test for sub chart axis
         # sub_chart.add_axis(ValueAxisX())
@@ -98,8 +98,10 @@ class MainWindow(QMainWindow):
         self.main_data_source = main_data_source
         self.sub_data_source = sub_data_source
 
-        self.advanced_chart_widget.add_bar_chart(main_chart, 5).create_cross_hair()
-        self.advanced_chart_widget.add_bar_chart(sub_chart, 1).create_cross_hair()
+        cs1 = self.advanced_chart_widget.add_bar_chart(main_chart, 5).create_cross_hair()
+        cs2 = self.advanced_chart_widget.add_bar_chart(sub_chart, 1).create_cross_hair()
+        cs1.sync_x_to(cs2)
+        cs2.sync_x_to(cs1)
 
         self.t = QTimer()
         self.t.timeout.connect(self.on_timer)

@@ -2,35 +2,40 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from threading import Lock
-from typing import List, TypeVar, Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING, TypeVar, Generic
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtGui import QPainter
 
+
 if TYPE_CHECKING:
-    from Drawer import DrawConfig
+    from Base import DrawConfig, Alignment
 
 T = TypeVar("T")
 
 
-class DataSource(QObject):
+class DataSourceQObject(QObject):
+    data_removed = pyqtSignal(int, int)  # (start: int, end: int)
+
+
+class DataSource(Generic[T]):
     """
     DataSource for a Drawer.
     A DataSource is just like a list, but not all the operation is supported in list.
     Supported operations are:
     append(), clear(), __len__(), __getitem__(),
     """
-    data_removed = pyqtSignal(int, int)  # (start: int, end: int)
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__()
         self.data_list: List[T] = []
+        self.qobject = DataSourceQObject(parent)
 
     def append(self, object: T) -> None:
         self.data_list.append(object)
 
     def clear(self) -> None:
-        self.data_removed.emit(0, len(self.data_list))
+        self.qobject.data_removed.emit(0, len(self.data_list))
         self.data_list.clear()
 
     def append_by_sequence(self, xs: List[float], align: "Alignment", item: List[T]):
@@ -50,16 +55,7 @@ class DataSource(QObject):
 
 
 # override for type hint only
-class CandleDataSource(DataSource):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.data_list: List['CandleData'] = []
-
-    def append(self, object: "CandleData") -> None:
-        self.data_list.append(object)
-
-    def __getitem__(self, item):
-        return self.data_list[item]
+CandleDataSource = DataSource["CandleData"]
 
 
 @dataclass
@@ -74,7 +70,7 @@ class CandleData:
     datetime: datetime
 
 
-class DrawerBase(ABC):
+class ChartDrawerBase(ABC):
     """
     数据序列
     有两个职责：
@@ -138,8 +134,8 @@ class DrawerBase(ABC):
         pass
 
     def _attach_data_source(self):
-        self._data_source.data_removed.connect(self.on_data_source_data_removed)
-        self._data_source.destroyed.connect(self.on_data_source_destroyed)
+        self._data_source.qobject.data_removed.connect(self.on_data_source_data_removed)
+        self._data_source.qobject.destroyed.connect(self.on_data_source_destroyed)
 
     def _detach_data_source(self):
         raise RuntimeError("Rest of DataSource is currently not implemented.")

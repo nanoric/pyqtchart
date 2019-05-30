@@ -8,11 +8,10 @@ from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransfor
 from PyQt5.QtWidgets import QWidget
 
 from Axis import ValueAxis, ValueAxisX, ValueAxisY, AxisBase
-from Base import ColorType, Orientation
-from Drawer import DrawingCache, DrawConfig
+from Base import ColorType, Orientation, DrawingCache, DrawConfig
 
 if TYPE_CHECKING:
-    from DataSource import DrawerBase
+    from DataSource import ChartDrawerBase
 
 T = TypeVar("T")
 
@@ -48,7 +47,7 @@ class BarChartWidget(QWidget):
         self._axis_list: List["AxisBase"] = []
 
         self._draw_config = ExtraDrawConfig()
-        self._drawers: List["DrawerBase"] = []
+        self._drawers: List["ChartDrawerBase"] = []
 
         self._draw_config.begin = 0
         self._draw_config.end = 10
@@ -56,9 +55,7 @@ class BarChartWidget(QWidget):
         self._repaint_lock = Lock()
         self._repaint_scheduled = False
 
-        self.setMouseTracking(True)
-
-    def add_drawer(self, drawer: "DrawerBase"):
+    def add_drawer(self, drawer: "ChartDrawerBase"):
         self._drawers.append(drawer)
         self.update()
 
@@ -137,9 +134,6 @@ class BarChartWidget(QWidget):
         self._draw_config = config
         event.accept()
 
-    def mouseMoveEvent(self, event: QMouseEvent):
-        event.ignore()
-
     #########################################################################
     # Private methods
     #########################################################################
@@ -151,8 +145,7 @@ class BarChartWidget(QWidget):
                     self._paint_drawer(s, config, painter)
             self._switch_painter_to_ui_coordinate(painter)
 
-    def _paint_drawer(self, drawer: "DrawerBase", config: "ExtraDrawConfig", painter: "QPainter"):
-        # painter = QPainter(layer)
+    def _paint_drawer(self, drawer: "ChartDrawerBase", config: "ExtraDrawConfig", painter: "QPainter"):
         painter.setPen(QPen(Qt.transparent))
         drawer.draw(copy(config), painter)
 
