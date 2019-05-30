@@ -39,7 +39,7 @@ class CrossHairAxis(AxisBase):
         for other in self._links:
             other._set_drawer_value(self._drawer_value)
 
-    def sync_to(self, target: "CrossHairAxis"):
+    def link_to(self, target: "CrossHairAxis"):
         assert target.orientation == self.orientation
         if self not in target._links:
             target._links.append(self)
@@ -131,11 +131,11 @@ class SubChartWrapper:
         self.create_cross_hair_y()
         return self
 
-    def sync_x_to(self, target: "SubChartWrapper"):
-        self.cross_hair_x.sync_to(target.cross_hair_x)
+    def link_x_to(self, target: "SubChartWrapper"):
+        self.cross_hair_x.link_to(target.cross_hair_x)
 
-    def sync_y_to(self, target: "SubChartWrapper"):
-        self.cross_hair_y.sync_to(target.cross_hair_y)
+    def link_y_to(self, target: "SubChartWrapper"):
+        self.cross_hair_y.link_to(target.cross_hair_y)
 
 
 class AdvancedBarChart(QWidget):

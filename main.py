@@ -108,8 +108,8 @@ class MainWindow(QMainWindow):
             main_chart, 5
         ).create_cross_hair()
         cs2 = self.advanced_chart_widget.add_bar_chart(sub_chart, 1).create_cross_hair()
-        cs1.sync_x_to(cs2)
-        cs2.sync_x_to(cs1)
+        cs1.link_x_to(cs2)
+        cs2.link_x_to(cs1)
 
         self.t = QTimer()
         self.t.timeout.connect(self.on_timer)
