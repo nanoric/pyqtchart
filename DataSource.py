@@ -2,11 +2,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from threading import Lock
-from typing import List, Optional, TYPE_CHECKING, TypeVar, Generic
+from typing import Generic, List, Optional, TYPE_CHECKING, TypeVar
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtGui import QPainter
-
 
 if TYPE_CHECKING:
     from Base import DrawConfig, Alignment
@@ -63,6 +62,7 @@ class CandleData:
     """
     Represent a single record in DataSource for CandleDrawer
     """
+
     open: float
     low: float
     high: float

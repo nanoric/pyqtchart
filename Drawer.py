@@ -3,7 +3,7 @@
 from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QBrush, QColor, QPainter
 
-from DataSource import CandleData, DataSource, ChartDrawerBase
+from DataSource import CandleData, ChartDrawerBase, DataSource
 
 if TYPE_CHECKING:
     from Base import ColorType, DrawConfig
@@ -37,7 +37,7 @@ class CandleDrawer(ChartDrawerBase):
         self.clear_cache()
 
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
-        showing_data = self._data_source[config.begin:config.end]
+        showing_data = self._data_source[config.begin: config.end]
         if showing_data:
             low = min(showing_data, key=lambda c: c.low).low
             high = max(showing_data, key=lambda c: c.high).high
@@ -58,9 +58,9 @@ class CandleDrawer(ChartDrawerBase):
             self._generate_cache(self._cache_end, data_len)
 
         painter.setBrush(raising_brush)
-        painter.drawRects([i for i in self._cache_raising[begin * 2:end * 2] if i])
+        painter.drawRects([i for i in self._cache_raising[begin * 2: end * 2] if i])
         painter.setBrush(falling_brush)
-        painter.drawRects([i for i in self._cache_falling[begin * 2:end * 2] if i])
+        painter.drawRects([i for i in self._cache_falling[begin * 2: end * 2] if i])
 
     def clear_cache(self):
         self._cache_end = 0
@@ -92,8 +92,12 @@ class CandleDrawer(ChartDrawerBase):
 
     def get_rect(self, i, start_y, end_y, width):
         left = i + 0.5 - 0.5 * width
-        rect = QRectF(left, min(start_y, end_y),
-                      width, max(abs(start_y - end_y), self.minimum_box_height))
+        rect = QRectF(
+            left,
+            min(start_y, end_y),
+            width,
+            max(abs(start_y - end_y), self.minimum_box_height),
+        )
         return rect
 
 
@@ -123,7 +127,7 @@ class BarChartDrawer(ChartDrawerBase):
         self.clear_cache()
 
     def prepare_draw(self, config: "DrawConfig") -> "DrawConfig":
-        showing_data = self._data_source[config.begin:config.end]
+        showing_data = self._data_source[config.begin: config.end]
         if showing_data:
             low = min(showing_data)
             high = max(showing_data)
@@ -174,12 +178,8 @@ class BarChartDrawer(ChartDrawerBase):
 
     def get_rect(self, i, start_y, end_y, width):
         left = i + 0.5 - 0.5 * width
-        rect = QRectF(left, min(start_y, end_y),
-                      width, abs(start_y - end_y),
-                      )
+        rect = QRectF(left, min(start_y, end_y), width, abs(start_y - end_y))
         return rect
 
 
 HistogramDrawer = BarChartDrawer
-
-

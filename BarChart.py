@@ -1,14 +1,13 @@
 from copy import copy
 from threading import Lock
-from typing import List, TYPE_CHECKING, TypeVar, Iterable
+from typing import List, TYPE_CHECKING, TypeVar
 
-from PyQt5.QtCore import QRectF, Qt, QTimer
-from PyQt5.QtGui import QColor, QPaintEvent, QPainter, QPen, QPicture, QTransform, QBrush, \
-    QMouseEvent, QPalette
+from PyQt5.QtCore import QRectF, Qt
+from PyQt5.QtGui import (QBrush, QColor, QPaintEvent, QPainter, QPalette, QPen, QTransform)
 from PyQt5.QtWidgets import QWidget
 
-from Axis import ValueAxis, ValueAxisX, ValueAxisY, AxisBase
-from Base import ColorType, Orientation, DrawingCache, DrawConfig
+from Axis import AxisBase, ValueAxisX, ValueAxisY
+from Base import ColorType, DrawConfig, DrawingCache, Orientation
 
 if TYPE_CHECKING:
     from DataSource import ChartDrawerBase
@@ -145,7 +144,9 @@ class BarChartWidget(QWidget):
                     self._paint_drawer(s, config, painter)
             self._switch_painter_to_ui_coordinate(painter)
 
-    def _paint_drawer(self, drawer: "ChartDrawerBase", config: "ExtraDrawConfig", painter: "QPainter"):
+    def _paint_drawer(
+        self, drawer: "ChartDrawerBase", config: "ExtraDrawConfig", painter: "QPainter"
+    ):
         painter.setPen(QPen(Qt.transparent))
         drawer.draw(copy(config), painter)
 
@@ -188,7 +189,9 @@ class BarChartWidget(QWidget):
         config.has_showing_data = has_showing_data
 
         if has_showing_data and self._drawers:
-            preferred_configs = [s.prepare_draw(copy(config)) for s in self._drawers if s.has_data()]
+            preferred_configs = [
+                s.prepare_draw(copy(config)) for s in self._drawers if s.has_data()
+            ]
             if preferred_configs:
                 y_low = min(preferred_configs, key=lambda c: c.y_low).y_low
                 y_high = max(preferred_configs, key=lambda c: c.y_high).y_high
@@ -210,11 +213,12 @@ class BarChartWidget(QWidget):
         """
         # 从UI坐标系到drawer坐标系的转化矩阵的构造顺序恰好相反，假设目前为drawer坐标系
         # 将drawer坐标转化为UI坐标
-        drawer_area = QRectF(config.begin,
-                             config.y_low,
-                             max(config.end - config.begin, 1),
-                             max(config.y_high - config.y_low, 1),
-                             )
+        drawer_area = QRectF(
+            config.begin,
+            config.y_low,
+            max(config.end - config.begin, 1),
+            max(config.y_high - config.y_low, 1),
+        )
         plot_area = self.plot_area(config)
         # 应用这个坐标转化
         transform = self._coordinate_transform(drawer_area, plot_area)
@@ -245,7 +249,9 @@ class BarChartWidget(QWidget):
 
         config.drawing_cache = drawing_cache
 
-    def _switch_painter_to_drawer_coordinate(self, painter: "QPainter", config: "ExtraDrawConfig"):
+    def _switch_painter_to_drawer_coordinate(
+        self, painter: "QPainter", config: "ExtraDrawConfig"
+    ):
         """
         将painter的坐标系从UI坐标系调整为drawer坐标系
         这样painter中的x和y轴就正好对应数据的x和y了

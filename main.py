@@ -6,11 +6,17 @@ from typing import List, TypeVar
 import math
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPen, QPicture
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QSizePolicy, \
-    QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QVBoxLayout,
+    QWidget,
+)
 
 from AdvancedBarChart import AdvancedBarChart
-from Axis import CandleAxisX, ValueAxisY, ValueAxisX, BarAxisY
+from Axis import CandleAxisX, ValueAxisY
 from BarChart import BarChartWidget
 from DataSource import CandleData, DataSource
 from Drawer import BarChartDrawer, CandleDrawer
@@ -98,7 +104,9 @@ class MainWindow(QMainWindow):
         self.main_data_source = main_data_source
         self.sub_data_source = sub_data_source
 
-        cs1 = self.advanced_chart_widget.add_bar_chart(main_chart, 5).create_cross_hair()
+        cs1 = self.advanced_chart_widget.add_bar_chart(
+            main_chart, 5
+        ).create_cross_hair()
         cs2 = self.advanced_chart_widget.add_bar_chart(sub_chart, 1).create_cross_hair()
         cs1.sync_x_to(cs2)
         cs2.sync_x_to(cs1)
@@ -181,8 +189,7 @@ def parse_datetime(dt_str: str):
 
 
 def gen_wave(i, p=0, T=360, a=1000):
-    return a * math.sin(
-        (i - p) / T * math.pi)
+    return a * math.sin((i - p) / T * math.pi)
 
 
 def read_data():
@@ -206,10 +213,7 @@ def read_data():
                 high=high,
                 close=close,
                 datetime=datetime,
-                volume=
-                gen_wave(i, 31)
-                + gen_wave(i, 15, 70)
-                + gen_wave(i, 30, 80)
+                volume=gen_wave(i, 31) + gen_wave(i, 15, 70) + gen_wave(i, 30, 80),
             )
             i += 1
             yield bar_data
@@ -231,5 +235,5 @@ def main():
     app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
