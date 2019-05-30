@@ -168,14 +168,14 @@ class BarChartWidget(QWidget):
         if config.has_showing_data:
             painter.setBrush(QColor(0, 0, 0, 0))
             for axis in axises:
-                if axis.grids_visible:
+                if axis.grid_visible:
                     axis.prepare_draw_grids(config, painter)
                     axis.draw_grids(copy(config), painter)
 
         # last: labels
         if config.has_showing_data:
             for axis in axises:
-                if axis.labels_visible:
+                if axis.label_visible:
                     axis.prepare_draw_labels(config, painter)
                     painter.setBrush(QColor(0, 0, 0, 0))
                     axis.draw_labels(copy(config), painter)

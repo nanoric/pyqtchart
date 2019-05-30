@@ -33,6 +33,9 @@ class DataSource(QObject):
         self.data_removed.emit(0, len(self.data_list))
         self.data_list.clear()
 
+    def append_by_sequence(self, xs: List[float], align: "Alignment", item: List[T]):
+        raise NotImplementedError()
+
     def __getitem__(self, item):
         return self.data_list[item]
 
@@ -46,8 +49,17 @@ class DataSource(QObject):
         return repr(self.data_list)
 
 
-# should be DataSource["CandleData"], but QObject makes this impossible
-CandleDataSourceType = List["CandleData"]
+# override for type hint only
+class CandleDataSource(DataSource):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.data_list: List['CandleData'] = []
+
+    def append(self, object: "CandleData") -> None:
+        self.data_list.append(object)
+
+    def __getitem__(self, item):
+        return self.data_list[item]
 
 
 @dataclass
