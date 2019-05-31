@@ -66,17 +66,17 @@ axis_x.label_count = 7
 
 ## 高级用法
 ### 子图
-使用AdvancedChartWidget可以方便地整合多个ChartWidget。
-使用AdvancedChartWidget.add_chart()可以增加子图并设置子图所占空间比例。
+使用AdvancedChartWidget可以方便地整合多个ChartWidget。  
+使用AdvancedChartWidget.add_chart()可以增加子图并设置子图所占空间比例。  
 
 ### 颜色、样式设置
-所有的样式都可以设置，包括颜色，字体，边框、是否显示等等。
-任何与数据有关的样式设置都在drawer中有对应的属性。
-与表格有关的样式属性都在chart中。
+所有的样式都可以设置，包括颜色，字体，边框、是否显示等等。  
+任何与数据有关的样式设置都在drawer中有对应的属性。  
+与表格有关的样式属性都在chart中。  
 
 ### 光标以及光标同步
-在AdvancedChartWidget中可以创建一个光标，使用SubChartWrapper.create_cross_hair()可以创建默认的光标。
-使用使用SubChartWrapper.linx_x_to()/link_y_to()可以同步两张图标中的X/Y光标。
+在AdvancedChartWidget中可以创建一个光标，使用SubChartWrapper.create_cross_hair()可以创建默认的光标。  
+使用SubChartWrapper.linx_x_to()/link_y_to()可以同步两张图标中的X/Y光标。  
  > 不是所有的Axis都支持光标，如果Axis不支持光标，会在绘图的时候抛出异常。  
  > 所有内置的Axis都支持光标。  
  
