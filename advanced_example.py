@@ -206,10 +206,10 @@ def read_data():
             dt_str = item["时间"]
             datetime = parse_datetime(dt_str)
             bar_data = MyData(
-                open=open_price,
-                low=low,
-                high=high,
-                close=close,
+                open_price=open_price,
+                low_price=low,
+                high_price=high,
+                close_price=close,
                 datetime=datetime,
                 volume=gen_wave(i, 31) + gen_wave(i, 15, 70) + gen_wave(i, 30, 80),
             )
