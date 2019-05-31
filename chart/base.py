@@ -23,29 +23,10 @@ class Orientation(Enum):
     VERTICAL = 2
 
 
-class TickType(Enum):
-    VALUE = 0  # label is bound to a value
-    BAR = 1  # label is bound to a bar( a range of value )
-
-
-class TickPosition(Enum):
-    """
-    indicate where to show a label for TickType == BAR
-    """
-
-    BEGIN = 0
+class Alignment(Enum):
+    BEFORE = 0
     MID = 1
-    END = 2
-
-
-class TickSource(Enum):
-    """
-    indicate where a label value comes from if TickType == BAR
-    """
-
-    BEGIN = 0
-    MID = 1
-    END = 2
+    AFTER = 2
 
 
 @dataclass()
@@ -104,9 +85,3 @@ class DrawConfig:
     y_high: float = 1  # 图表底端所代表的y值
 
     drawing_cache: Optional["DrawingCache"] = None
-
-
-class Alignment(Enum):
-    BEFORE = 0
-    MID = 1
-    AFTER = 2

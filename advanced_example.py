@@ -15,11 +15,11 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from AdvancedBarChart import AdvancedBarChart
-from Axis import CandleAxisX, ValueAxisY
-from BarChart import BarChartWidget
-from DataSource import CandleData, DataSource
-from Drawer import BarChartDrawer, CandleDrawer
+from chart import AdvancedChartWidget
+from chart import CandleAxisX, ValueAxisY
+from chart import ChartWidget
+from chart import CandleData, DataSource, CandleDataSource
+from chart import BarChartDrawer, CandleChartDrawer
 
 T = TypeVar("T")
 
@@ -76,14 +76,13 @@ class MainWindow(QMainWindow):
         self.datas = datas
         self.data_last_index = 0
 
-        main_data_source = DataSource(self)
+        main_data_source = CandleDataSource(self)
         sub_data_source = DataSource(self)
 
-        main_chart = BarChartWidget()
-        sub_chart = BarChartWidget()
+        main_chart = ChartWidget()
+        sub_chart = ChartWidget()
 
-        main_chart.add_drawer(CandleDrawer(main_data_source))
-        main_chart.add_drawer(CandleDrawer())
+        main_chart.add_drawer(CandleChartDrawer(main_data_source))
         main_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
 
         # test for main chart axis
@@ -91,7 +90,6 @@ class MainWindow(QMainWindow):
         # main_chart.add_axis(BarAxisY())
 
         sub_chart.add_drawer(BarChartDrawer(sub_data_source))
-        sub_chart.add_drawer(BarChartDrawer())
         sub_chart.add_axis(CandleAxisX(main_data_source), ValueAxisY())
 
         # test for sub chart axis
@@ -104,10 +102,10 @@ class MainWindow(QMainWindow):
         self.main_data_source = main_data_source
         self.sub_data_source = sub_data_source
 
-        cs1 = self.advanced_chart_widget.add_bar_chart(
+        cs1 = self.advanced_chart_widget.add_chart(
             main_chart, 5
         ).create_cross_hair()
-        cs2 = self.advanced_chart_widget.add_bar_chart(sub_chart, 1).create_cross_hair()
+        cs2 = self.advanced_chart_widget.add_chart(sub_chart, 1).create_cross_hair()
         cs1.link_x_to(cs2)
         cs2.link_x_to(cs1)
 
@@ -136,7 +134,7 @@ class MainWindow(QMainWindow):
         # main layout
         main_layout = QVBoxLayout()
 
-        advanced_chart_widget = AdvancedBarChart()
+        advanced_chart_widget = AdvancedChartWidget()
 
         main_layout.addLayout(status_layout)
         main_layout.addWidget(advanced_chart_widget)

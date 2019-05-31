@@ -6,11 +6,11 @@ from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import (QBrush, QColor, QPaintEvent, QPainter, QPalette, QPen, QTransform)
 from PyQt5.QtWidgets import QWidget
 
-from Axis import AxisBase, ValueAxisX, ValueAxisY
-from Base import ColorType, DrawConfig, DrawingCache, Orientation
+from .axis import AxisBase, ValueAxisX, ValueAxisY
+from .base import ColorType, DrawConfig, DrawingCache, Orientation
 
 if TYPE_CHECKING:
-    from DataSource import ChartDrawerBase
+    from chart import ChartDrawerBase
 
 T = TypeVar("T")
 
@@ -28,9 +28,15 @@ class ExtraDrawConfig(DrawConfig):
         self.has_showing_data: bool = False
 
 
-class BarChartWidget(QWidget):
+class ChartWidget(QWidget):
     """
-    用于管理二维平面图，目前只支持x坐标值为线性整数的图标。
+    Used to show a chart.
+    A chart can have multiple Drawer and Axis from any arbitrary DataSource.
+    use add_drawer to add a drawer.
+    use set_x_range to scroll/scaling the view.
+
+    Currently, the range of y axis is determined automatically.
+      Manually control of Y axis is not supported.
     """
 
     def __init__(self, parent=None):
@@ -40,7 +46,7 @@ class BarChartWidget(QWidget):
         self.plot_area_edge_visible: bool = True
         # 注意，当bottom和right为0时，最下边和最右边的边框会因为越界而不显示
         # padding: (left, top, right, bottom)
-        left, top, right, bottom = 20, 20, 20, 20
+        left, top, right, bottom = 80, 20, 20, 20
         self.paddings = [left, top, right, bottom]
 
         self._axis_list: List["AxisBase"] = []
@@ -55,12 +61,25 @@ class BarChartWidget(QWidget):
         self._repaint_scheduled = False
 
     def add_drawer(self, drawer: "ChartDrawerBase"):
-        self._drawers.append(drawer)
-        self.update()
+        if drawer not in self._drawers:
+            self._drawers.append(drawer)
+            self.update()
 
     def set_x_range(self, begin: int, end: int):
-        self._draw_config.begin, self._draw_config.end = begin, end
-        self.update()
+        config = self._draw_config
+        if (begin, end) != (config.begin, config.end):
+            config.begin, config.end = begin, end
+            self.update()
+
+    def add_axis(self, *axis_list: "AxisBase"):
+        self._axis_list.extend(axis_list)
+
+    def create_default_axis(self):
+        """
+        Create a ValueAxisX and a ValueAxisY then add to this chart.
+        """
+        assert len(self._axis_list) == 0
+        self.add_axis(ValueAxisX(), ValueAxisY())
 
     @property
     def all_axis(self):
@@ -74,20 +93,13 @@ class BarChartWidget(QWidget):
     def all_axis_y(self):
         return [i for i in self._axis_list if i.orientation is Orientation.VERTICAL]
 
-    def add_axis(self, *axis_list: "AxisBase"):
-        self._axis_list.extend(axis_list)
-
-    def create_default_axis(self):
+    def plot_area(self) -> "QRectF":
         """
-        Create a ValueAxisX and a ValueAxisY then add to this chart.
-        """
-        assert len(self._axis_list) == 0
-        self.add_axis(ValueAxisX(), ValueAxisY())
-
-    def plot_area(self, config: "ExtraDrawConfig") -> "QRectF":
-        """
+        calculate the area where chart is printed, excluding padding and axis.
         在UI坐标系中计算出绘制区域
-        内部绘制函数无需调用该函数，查看config.output这个缓存的值即可
+
+        :note: for internal drawing function, use config.drawer_cache.plot_area.
+        :note: 内部绘制函数无需调用该函数，查看config.output这个缓存的值即可
         """
         output: QRectF = QRectF(self.rect())
 
@@ -97,10 +109,13 @@ class BarChartWidget(QWidget):
 
     def drawer_to_ui(self, value: T, config: "ExtraDrawConfig" = None) -> T:
         """
-        将value从drawer坐标系转到UI坐标系
+        convert value(QPoint, QSize, QRect, etc.) from UI coordinate system to drawer coordinate system.
+        将value（QPoint, QSize, QRect等等）从UI坐标系转化到drawer坐标系.
         """
         if config is None:
             config = self._draw_config
+        if isinstance(value, QRectF):
+            return config.drawing_cache.drawer_transform.mapRect(value)
         return config.drawing_cache.drawer_transform.map(value)
 
     #########################################################################
@@ -209,7 +224,6 @@ class BarChartWidget(QWidget):
         """
         生成一个矩阵用以将painter的坐标系从UI坐标系调整为drawer坐标系
         这样painter中的x和y轴就正好对应数据的x和y了
-
         """
         # 从UI坐标系到drawer坐标系的转化矩阵的构造顺序恰好相反，假设目前为drawer坐标系
         # 将drawer坐标转化为UI坐标
@@ -219,7 +233,7 @@ class BarChartWidget(QWidget):
             max(config.end - config.begin, 1),
             max(config.y_high - config.y_low, 1),
         )
-        plot_area = self.plot_area(config)
+        plot_area = self.plot_area()
         # 应用这个坐标转化
         transform = self._coordinate_transform(drawer_area, plot_area)
 
